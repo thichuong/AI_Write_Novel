@@ -45,6 +45,23 @@ def init_db():
         )
     ''')
     
+    # Nodes Table (File System)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS nodes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            story_id INTEGER,
+            parent_id INTEGER, -- NULL for root
+            name TEXT NOT NULL,
+            type TEXT NOT NULL, -- 'file' or 'folder'
+            content TEXT, -- File content
+            category TEXT, -- 'chapter', 'rule', 'character', 'item', 'plot', etc.
+            order_index INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (story_id) REFERENCES stories (id),
+            FOREIGN KEY (parent_id) REFERENCES nodes (id)
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 

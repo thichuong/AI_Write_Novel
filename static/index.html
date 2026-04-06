@@ -3,64 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Novelist - Sáng tác cùng Gemma 4</title>
+    <title>AI Novelist IDE - Sáng tác đỉnh cao</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="dark-theme">
+<body class="dark-pro">
     <div id="app">
-        <!-- Sidebar: Chapter List -->
+        <!-- 1. Activity Bar -->
+        <nav id="activity-bar">
+            <div class="activity-top">
+                <div class="activity-icon active" id="nav-explorer" title="Explorer">
+                    <i data-lucide="files"></i>
+                </div>
+                <div class="activity-icon" id="nav-search" title="Search">
+                    <i data-lucide="search"></i>
+                </div>
+                <div class="activity-icon" id="nav-story-settings" title="Story Settings">
+                    <i data-lucide="settings"></i>
+                </div>
+            </div>
+            <div class="activity-bottom">
+                <div class="activity-icon" id="nav-profile" title="Account">
+                    <i data-lucide="user-circle"></i>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 2. Sidebar: Explorer -->
         <aside id="sidebar">
-            <div class="sidebar-header">
-                <h2>AI Novelist</h2>
-                <button id="new-story-btn" title="Truyện mới">+</button>
+            <div class="sidebar-section" id="section-stories">
+                <div class="sidebar-header">
+                    <span>DANH SÁCH TRUYỆN</span>
+                    <div class="sidebar-actions">
+                        <button id="new-story-btn" title="Truyệm mới"><i data-lucide="plus-square"></i></button>
+                    </div>
+                </div>
+                <div id="stories-list" class="sidebar-list">
+                    <!-- Stories will be loaded here -->
+                </div>
             </div>
-            <div id="chapter-list">
-                <!-- Chapters will be loaded here -->
+
+            <div class="sidebar-section" id="section-explorer">
+                <div class="sidebar-header">
+                    <span id="story-title-display">EXPLORER</span>
+                    <div class="sidebar-actions">
+                        <button id="refresh-explorer" title="Làm mới"><i data-lucide="rotate-cw"></i></button>
+                    </div>
+                </div>
+                <div id="explorer-tree">
+                    <!-- Recursive Node Tree -->
+                </div>
             </div>
-            <div class="sidebar-footer">
-                <button id="add-chapter-btn">+ Chương mới</button>
+            
+            <div id="sidebar-status-area">
+                <div class="status-item"><i data-lucide="book"></i> <span id="status-story-name">No story</span></div>
+                <div class="status-item"><i data-lucide="hash"></i> <span id="word-count">Chars: 0</span></div>
+                <div class="status-item"><i data-lucide="cpu"></i> <span id="ai-model">Gemma 4</span></div>
+                <div class="status-item" id="sync-status"><i data-lucide="cloud-check"></i> Connected</div>
             </div>
         </aside>
 
-        <!-- Main Content Area (Split Panes) -->
-        <main id="main-content">
-            <!-- Left Pane: Chat Bot -->
-            <section id="chat-pane">
-                <div class="pane-header">
-                    <h3>Trợ lý ý tưởng</h3>
-                </div>
-                <div id="chat-messages">
-                    <!-- Chat messages will be loaded here -->
-                </div>
-                <div class="chat-input-container">
-                    <textarea id="chat-input" placeholder="Nhập ý tưởng hoặc yêu cầu..."></textarea>
-                    <button id="send-chat-btn">Gửi</button>
-                </div>
-            </section>
+        <!-- 3. Main Body: Tabs + Editor -->
+        <main id="editor-container">
+            <!-- Tabs -->
+            <div id="tab-bar">
+                <div id="tabs-list"></div>
+            </div>
 
-            <!-- Right Pane: Story Editor -->
-            <section id="editor-pane">
-                <div class="pane-header">
-                    <h3 id="current-chapter-title">Chương 1</h3>
-                    <div class="editor-tools">
-                        <button id="ai-full-write-btn" style="background: var(--accent-color); margin-right: 10px;">AI viết truyện</button>
-                        <button id="save-btn">Lưu</button>
+            <!-- Content Area -->
+            <section id="editor-area">
+                <div id="editor-header">
+                    <h2 id="current-file-name">Chào mừng</h2>
+                    <div class="editor-actions">
+                        <button id="ai-full-write-btn" class="btn-primary">
+                            <i data-lucide="sparkles"></i> AI Viết Truyện
+                        </button>
+                        <button id="save-btn" class="btn-secondary">Lưu</button>
                     </div>
                 </div>
-                <div id="story-editor">
-                    <!-- Story content blocks will be loaded here -->
+                <div id="story-editor-wrapper">
+                    <div id="story-editor" contenteditable="true">
+                        <!-- Content here -->
+                    </div>
                 </div>
                 
-                <!-- Floating Toolbar for selection -->
+                <!-- Floating Toolbar -->
                 <div id="floating-toolbar" class="hidden">
-                    <button id="ai-rewrite-btn">Sửa dòng</button>
-                    <button id="ai-continue-btn">Viết tiếp</button>
+                    <button id="ai-rewrite-btn"><i data-lucide="wand-2"></i> Chỉnh sửa</button>
+                    <button id="ai-continue-btn"><i data-lucide="step-forward"></i> Viết tiếp</button>
                 </div>
             </section>
         </main>
+
+        <!-- 4. Right Panel: AI Chat -->
+        <aside id="chat-panel">
+            <div class="chat-header">
+                <h3><i data-lucide="message-square"></i> AI Assistant</h3>
+                <button id="clear-chat-btn"><i data-lucide="trash-2"></i></button>
+            </div>
+            <div id="chat-messages">
+                <!-- Messages -->
+            </div>
+            <div class="chat-input-wrapper">
+                <textarea id="chat-input" placeholder="Hỏi AI về cốt truyện, nhân vật..."></textarea>
+                <button id="send-chat-btn"><i data-lucide="send"></i></button>
+            </div>
+        </aside>
+
     </div>
 
     <!-- Modals -->
@@ -75,6 +128,10 @@
         </div>
     </div>
 
+    <script>
+        // Initial lucide icons
+        lucide.createIcons();
+    </script>
     <script src="app.js"></script>
 </body>
 </html>

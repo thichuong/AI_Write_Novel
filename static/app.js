@@ -1,169 +1,255 @@
-let currentStoryId = null;
-let currentChapterId = null;
-let chapters = [];
-let activeBlock = null;
+/**
+ * AI Novelist IDE - Core Application Logic
+ */
+
+let state = {
+    currentStoryId: null,
+    nodes: [], // Full tree of nodes for the current story
+    openTabs: [], // Array of node objects
+    activeNodeId: null,
+    stories: [],
+    isSaving: false
+};
 
 // Selectors
-const chapterList = document.getElementById('chapter-list');
+const explorerTree = document.getElementById('explorer-tree');
+const tabsList = document.getElementById('tabs-list');
 const storyEditor = document.getElementById('story-editor');
+const currentFileName = document.getElementById('current-file-name');
 const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
-const sendChatBtn = document.getElementById('send-chat-btn');
-const floatingToolbar = document.getElementById('floating-toolbar');
+const statusStoryName = document.getElementById('status-story-name');
 const modalOverlay = document.getElementById('modal-overlay');
 
-// Initialization
+// 1. Initialization
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStories();
     setupEventListeners();
+    lucide.createIcons();
 });
 
 function setupEventListeners() {
-    document.getElementById('new-story-btn').onclick = () => showModal("Tên truyện mới", "confirm-new-story");
-    document.getElementById('add-chapter-btn').onclick = addChapter;
-    document.getElementById('save-btn').onclick = saveCurrentChapter;
-    sendChatBtn.onclick = sendChat;
+    // Activity Bar
+    document.getElementById('nav-explorer').onclick = () => switchActivity('explorer');
+    document.getElementById('new-story-btn').onclick = () => showModal("Tên truyện mới", "create-story");
+    document.getElementById('refresh-explorer').onclick = () => loadNodes(state.currentStoryId);
     
+    // Editor Actions
+    document.getElementById('save-btn').onclick = () => saveActiveFile();
+    document.getElementById('ai-full-write-btn').onclick = () => runAiWriting("full");
+    
+    // Chat Actions
+    document.getElementById('send-chat-btn').onclick = sendChat;
+    document.getElementById('clear-chat-btn').onclick = () => { chatMessages.innerHTML = ""; };
+    chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } };
+
+    // Modal
     document.getElementById('modal-cancel').onclick = () => modalOverlay.classList.add('hidden');
-    
+
+    // Floating Toolbar
     document.getElementById('ai-rewrite-btn').onclick = () => runAiWriting("rewrite");
     document.getElementById('ai-continue-btn').onclick = () => runAiWriting("continue");
-    document.getElementById('ai-full-write-btn').onclick = () => runAiWriting("full");
 
-    // Hide toolbar when clicking outside
+    // Click outside toolbar
     document.addEventListener('mousedown', (e) => {
-        if (!floatingToolbar.contains(e.target) && !storyEditor.contains(e.target)) {
-            floatingToolbar.classList.add('hidden');
+        const toolbar = document.getElementById('floating-toolbar');
+        if (!toolbar.contains(e.target) && !storyEditor.contains(e.target)) {
+            toolbar.classList.add('hidden');
         }
     });
+
+    // Editor Auto-save on blur or input (debounced)
+    storyEditor.addEventListener('input', debounce(() => {
+        if (state.activeNodeId) saveActiveFile(true);
+    }, 2000));
 }
 
-// Modal handling
-function showModal(title, action) {
-    document.getElementById('modal-title').innerText = title;
-    document.getElementById('modal-input').value = "";
-    document.getElementById('modal-confirm').onclick = async () => {
-        const val = document.getElementById('modal-input').value;
-        if (action === "confirm-new-story") await createStory(val);
-        modalOverlay.classList.add('hidden');
-    };
-    modalOverlay.classList.remove('hidden');
+function switchActivity(activity) {
+    document.querySelectorAll('.activity-icon').forEach(el => el.classList.remove('active'));
+    document.getElementById(`nav-${activity}`).classList.add('active');
+    // Implement other panes if needed
 }
 
-// API Calls
+// 2. Models & API
 async function loadStories() {
     const res = await fetch('/api/stories');
-    const stories = await res.json();
-    if (stories.length > 0) {
-        await selectStory(stories[0].id);
+    state.stories = await res.json();
+    renderStoriesList();
+    if (state.stories.length > 0 && !state.currentStoryId) {
+        await selectStory(state.stories[0]);
     }
 }
 
-async function createStory(title) {
-    const res = await fetch('/api/stories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title })
+function renderStoriesList() {
+    const storiesList = document.getElementById('stories-list');
+    storiesList.innerHTML = "";
+    state.stories.forEach(story => {
+        const item = document.createElement('div');
+        item.className = `story-list-item ${story.id === state.currentStoryId ? 'active' : ''}`;
+        item.innerHTML = `<i data-lucide="book"></i> <span>${story.title}</span>`;
+        item.onclick = () => selectStory(story);
+        storiesList.appendChild(item);
     });
-    const story = await res.json();
-    await loadStories();
-    await selectStory(story.id);
+    lucide.createIcons();
 }
 
-async function selectStory(id) {
-    currentStoryId = id;
-    const res = await fetch(`/api/chapters/${id}`);
-    chapters = await res.json();
-    renderChapterList();
-    if (chapters.length > 0) {
-        selectChapter(chapters[0].id);
+async function selectStory(story) {
+    if (state.currentStoryId && state.currentStoryId !== story.id) {
+        // Clear editor and tabs when switching stories
+        state.openTabs = [];
+        state.activeNodeId = null;
+        renderTabs();
+        storyEditor.innerText = "";
+        currentFileName.innerText = "Chọn một file để bắt đầu";
     }
-}
 
-function renderChapterList() {
-    chapterList.innerHTML = "";
-    chapters.forEach((chap, index) => {
-        const div = document.createElement('div');
-        div.className = `chapter-item ${chap.id === currentChapterId ? 'active' : ''}`;
-        div.innerText = chap.title;
-        div.onclick = () => selectChapter(chap.id);
-        chapterList.appendChild(div);
-    });
-}
-
-function selectChapter(id) {
-    currentChapterId = id;
-    const chap = chapters.find(c => c.id === id);
-    document.getElementById('current-chapter-title').innerText = chap.title;
-    renderEditor(chap.content);
-    renderChapterList();
-}
-
-async function addChapter() {
-    const res = await fetch(`/api/chapters/${currentStoryId}`, { method: 'POST' });
-    const newChap = await res.json();
-    chapters.push(newChap);
-    renderChapterList();
-    selectChapter(newChap.id);
-}
-
-// Editor Logic
-function renderEditor(content) {
-    storyEditor.innerHTML = "";
-    const pTags = content.split('\n\n');
-    pTags.forEach(p => {
-        if (p.trim() || pTags.length === 1) {
-            addBlock(p.trim());
-        }
-    });
-    if (storyEditor.children.length === 0) addBlock("");
-}
-
-function addBlock(text) {
-    const div = document.createElement('div');
-    div.className = "story-block";
-    div.contentEditable = "true";
-    div.innerText = text;
+    state.currentStoryId = story.id;
+    statusStoryName.innerText = story.title;
+    document.getElementById('story-title-display').innerText = story.title.toUpperCase();
     
-    div.onfocus = (e) => {
-        activeBlock = div;
-        showToolbar(div);
-    };
+    renderStoriesList();
+    await loadNodes(story.id);
+}
 
-    div.onkeydown = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            const newBlock = addBlock("");
-            div.after(newBlock);
-            newBlock.focus();
+async function loadNodes(storyId) {
+    const res = await fetch(`/api/stories/${storyId}/nodes`);
+    state.nodes = await res.json();
+    renderExplorer();
+}
+
+async function saveActiveFile(silent = false) {
+    if (!state.activeNodeId) return;
+    const content = storyEditor.innerText;
+    
+    // Update local state first
+    const node = state.nodes.find(n => n.id === state.activeNodeId);
+    if (node) node.content = content;
+
+    try {
+        await fetch(`/api/nodes/${state.activeNodeId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        });
+        if (!silent) showStatus("Saved successfully");
+    } catch (e) {
+        console.error("Save failed", e);
+    }
+}
+
+// 3. UI Rendering: Explorer
+function renderExplorer() {
+    explorerTree.innerHTML = "";
+    const rootNodes = state.nodes.filter(n => !n.parent_id);
+    rootNodes.forEach(node => {
+        explorerTree.appendChild(createNodeElement(node));
+    });
+    lucide.createIcons();
+}
+
+function createNodeElement(node) {
+    const container = document.createElement('div');
+    container.className = 'explorer-node';
+    
+    const item = document.createElement('div');
+    item.className = `node-item ${node.id === state.activeNodeId ? 'active' : ''} ${node.type === 'folder' ? 'node-folder' : 'node-file'}`;
+    
+    const icon = node.type === 'folder' ? 'folder' : 'file-text';
+    item.innerHTML = `
+        <i data-lucide="${icon}" class="node-icon"></i>
+        <span class="node-name">${node.name}</span>
+        <div class="node-actions">
+            ${node.type === 'folder' ? `
+                <button onclick="event.stopPropagation(); showNodeModal(${node.id}, 'file')" title="Add File"><i data-lucide="file-plus"></i></button>
+                <button onclick="event.stopPropagation(); showNodeModal(${node.id}, 'folder')" title="Add Folder"><i data-lucide="folder-plus"></i></button>
+            ` : ''}
+            <button onclick="event.stopPropagation(); deleteNode(${node.id})" title="Delete"><i data-lucide="trash-2"></i></button>
+        </div>
+    `;
+
+    item.onclick = () => {
+        if (node.type === 'folder') {
+            const contents = container.querySelector('.folder-contents');
+            if (contents) contents.classList.toggle('hidden');
+        } else {
+            openFile(node);
         }
     };
 
-    storyEditor.appendChild(div);
-    return div;
+    container.appendChild(item);
+
+    if (node.type === 'folder') {
+        const contents = document.createElement('div');
+        contents.className = 'folder-contents';
+        const children = state.nodes.filter(n => n.parent_id === node.id);
+        children.forEach(child => {
+            contents.appendChild(createNodeElement(child));
+        });
+        container.appendChild(contents);
+    }
+
+    return container;
 }
 
-function showToolbar(element) {
-    const rect = element.getBoundingClientRect();
-    floatingToolbar.style.top = `${window.scrollY + rect.top - 50}px`;
-    floatingToolbar.style.left = `${rect.left}px`;
-    floatingToolbar.classList.remove('hidden');
+// 4. Tabs & Editor
+function openFile(node) {
+    if (!state.openTabs.find(t => t.id === node.id)) {
+        state.openTabs.push(node);
+    }
+    state.activeNodeId = node.id;
+    renderTabs();
+    loadEditorContent(node);
+    renderExplorer(); // Refresh active state
 }
 
-async function saveCurrentChapter() {
-    const content = Array.from(storyEditor.children).map(c => c.innerText).join('\n\n');
-    await fetch(`/api/chapters/${currentChapterId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
+function renderTabs() {
+    tabsList.innerHTML = "";
+    state.openTabs.forEach(node => {
+        const tab = document.createElement('div');
+        tab.className = `tab ${node.id === state.activeNodeId ? 'active' : ''}`;
+        tab.innerHTML = `
+            <span>${node.name}</span>
+            <i data-lucide="x" class="tab-close" onclick="event.stopPropagation(); closeTab(${node.id})"></i>
+        `;
+        tab.onclick = () => openFile(node);
+        tabsList.appendChild(tab);
     });
-    // Update local state
-    const chap = chapters.find(c => c.id === currentChapterId);
-    if (chap) chap.content = content;
-    alert("Đã lưu!");
+    lucide.createIcons();
 }
 
-// AI Actions
+function closeTab(nodeId) {
+    state.openTabs = state.openTabs.filter(t => t.id !== nodeId);
+    if (state.activeNodeId === nodeId) {
+        state.activeNodeId = state.openTabs.length > 0 ? state.openTabs[state.openTabs.length - 1].id : null;
+    }
+    renderTabs();
+    if (state.activeNodeId) {
+        loadEditorContent(state.nodes.find(n => n.id === state.activeNodeId));
+    } else {
+        storyEditor.innerText = "";
+        currentFileName.innerText = "Chào mừng";
+    }
+}
+
+function loadEditorContent(node) {
+    currentFileName.innerText = node.name;
+    storyEditor.innerText = node.content || "";
+    document.getElementById('word-count').innerText = `Chars: ${node.content ? node.content.length : 0}`;
+}
+
+// 5. Node Operations
+function showNodeModal(parentId, type) {
+    showModal(`Tên ${type === 'folder' ? 'thư mục' : 'tập tin'} mới`, "create-node", { parentId, type });
+}
+
+async function deleteNode(id) {
+    if (!confirm("Bạn có chắc chắn muốn xóa? Thư mục con cũng sẽ bị xóa.")) return;
+    await fetch(`/api/nodes/${id}`, { method: 'DELETE' });
+    await loadNodes(state.currentStoryId);
+    if (state.activeNodeId === id) closeTab(id);
+}
+
+// 6. AI Features
 async function sendChat() {
     const msg = chatInput.value;
     if (!msg) return;
@@ -171,15 +257,13 @@ async function sendChat() {
     addChatMessage("user", msg);
     chatInput.value = "";
     
-    const context = Array.from(storyEditor.children).map(c => c.innerText).join('\n\n');
-    
     const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            story_id: currentStoryId,
+            story_id: state.currentStoryId,
             message: msg,
-            story_context: context
+            story_context: storyEditor.innerText
         })
     });
 
@@ -195,51 +279,24 @@ async function sendChat() {
     }
 }
 
-function addChatMessage(role, text) {
-    const div = document.createElement('div');
-    div.className = `message ${role}`;
-    div.innerText = text;
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    return div;
-}
-
 async function runAiWriting(type) {
-    let targetBlock = activeBlock;
     let instruction = "";
-    
-    if (type === "rewrite") {
-        instruction = "Hãy viết lại đoạn văn này cho hay hơn, sâu sắc hơn.";
-    } else if (type === "continue") {
-        instruction = "Hãy viết tiếp đoạn văn này.";
-    } else if (type === "full") {
-        instruction = "Dựa trên tất cả các chương trước đó và ý tưởng trong chat, hãy viết tiếp chương hiện tại.";
-        // Focus last block or create new if needed
-        if (!storyEditor.lastElementChild) addBlock("");
-        targetBlock = storyEditor.lastElementChild;
-    }
+    if (type === "rewrite") instruction = "Hãy sửa lại đoạn văn này cho tinh tế và giàu cảm xúc hơn.";
+    else if (type === "continue") instruction = "Hãy viết tiếp đoạn văn này một cách tự nhiên.";
+    else if (type === "full") instruction = "Dựa trên các quy tắc và nhân vật, hãy phát triển tiếp nội dung cho chương này.";
 
-    if (!targetBlock) return;
-    
-    const selection = (type === "rewrite") ? window.getSelection().toString() : "";
-    const context = Array.from(storyEditor.children).map(c => c.innerText).join('\n\n');
+    const selection = window.getSelection().toString();
+    const context = storyEditor.innerText;
 
-    targetBlock.classList.add('ai-thinking');
+    // Show loading or visual indicator
+    showStatus("AI is thinking...");
     
-    if (type === "continue" || type === "full") {
-        const nextBlock = addBlock("");
-        targetBlock.after(nextBlock);
-        targetBlock = nextBlock;
-    }
-    
-    targetBlock.innerText = ""; // Clear for streaming
-
     const response = await fetch('/api/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            story_id: currentStoryId,
-            current_chapter_id: currentChapterId,
+            story_id: state.currentStoryId,
+            current_chapter_id: state.activeNodeId || 0, // Fallback if no file open
             instruction: instruction,
             story_context: context,
             selection_context: selection || null
@@ -249,11 +306,81 @@ async function runAiWriting(type) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     
+    // If not a selection, append to end
+    if (!selection) storyEditor.innerText += "\n\n";
+
     while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        targetBlock.innerText += decoder.decode(value);
+        const chunk = decoder.decode(value);
+        
+        if (selection) {
+            // Complex to replace selection in real-time in contenteditable, simplified:
+            // Append for now or replace once at start? Let's just append to end for 'continue' and 'full'.
+        }
+        storyEditor.innerText += chunk;
         storyEditor.scrollTop = storyEditor.scrollHeight;
     }
-    targetBlock.classList.remove('ai-thinking');
+    showStatus("AI finished.");
+    saveActiveFile(true);
+}
+
+function addChatMessage(role, text) {
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    div.innerText = text;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return div;
+}
+
+// Utilities
+function showModal(title, action, extra = {}) {
+    document.getElementById('modal-title').innerText = title;
+    document.getElementById('modal-input').value = "";
+    document.getElementById('modal-confirm').onclick = async () => {
+        const val = document.getElementById('modal-input').value;
+        if (action === "create-story") {
+            const res = await fetch('/api/stories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: val })
+            });
+            const story = await res.json();
+            await loadStories();
+            await selectStory(story);
+        } else if (action === "create-node") {
+            await fetch('/api/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    story_id: state.currentStoryId,
+                    parent_id: extra.parentId,
+                    name: val,
+                    type: extra.type,
+                    category: state.nodes.find(n => n.id === extra.parentId)?.category
+                })
+            });
+            await loadNodes(state.currentStoryId);
+        }
+        modalOverlay.classList.add('hidden');
+    };
+    modalOverlay.classList.remove('hidden');
+}
+
+function showStatus(text) {
+    document.getElementById('sync-status').innerHTML = `<i data-lucide="loader"></i> ${text}`;
+    lucide.createIcons();
+    setTimeout(() => {
+        document.getElementById('sync-status').innerHTML = `<i data-lucide="cloud-check"></i> Connected`;
+        lucide.createIcons();
+    }, 3000);
+}
+
+function debounce(func, timeout = 300) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
 }

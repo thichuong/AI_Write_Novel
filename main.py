@@ -9,7 +9,7 @@ import uvicorn
 import json
 
 app = FastAPI()
-writer = agents.AIWriter()
+writer = agents.AIAgent()
 
 # Models
 class Story(BaseModel):
@@ -22,6 +22,16 @@ class Chapter(BaseModel):
     title: str
     content: str
     order_index: int
+
+class Node(BaseModel):
+    id: Optional[int] = None
+    story_id: int
+    parent_id: Optional[int] = None
+    name: str
+    type: str # 'file' or 'folder'
+    content: Optional[str] = None
+    category: Optional[str] = None
+    order_index: Optional[int] = 0
 
 class ChatRequest(BaseModel):
     story_id: int
@@ -39,6 +49,33 @@ class WriteRequest(BaseModel):
 @app.on_event("startup")
 def startup():
     database.init_db()
+    # Migration: Move existing chapters to nodes if they haven't been moved yet
+    conn = database.get_db_connection()
+    cursor = conn.cursor()
+    
+    stories = conn.execute("SELECT id FROM stories").fetchall()
+    for s in stories:
+        sid = s["id"]
+        # Check if default folders exist
+        folder_check = conn.execute("SELECT id FROM nodes WHERE story_id = ? AND name = 'Chương' AND type = 'folder'", (sid,)).fetchone()
+        if not folder_check:
+            # Create default folders
+            cursor.execute("INSERT INTO nodes (story_id, name, type, category) VALUES (?, ?, ?, ?)", (sid, "Chương", "folder", "chapter"))
+            chapters_folder_id = cursor.lastrowid
+            cursor.execute("INSERT INTO nodes (story_id, name, type, category) VALUES (?, ?, ?, ?)", (sid, "Quy tắc", "folder", "rule"))
+            cursor.execute("INSERT INTO nodes (story_id, name, type, category) VALUES (?, ?, ?, ?)", (sid, "Nhân vật", "folder", "character"))
+            cursor.execute("INSERT INTO nodes (story_id, name, type, category) VALUES (?, ?, ?, ?)", (sid, "Vật phẩm", "folder", "item"))
+            
+            # Move existing chapters
+            old_chapters = conn.execute("SELECT title, content, order_index FROM chapters WHERE story_id = ?", (sid,)).fetchall()
+            for c in old_chapters:
+                cursor.execute(
+                    "INSERT INTO nodes (story_id, parent_id, name, type, content, category, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (sid, chapters_folder_id, c["title"], "file", c["content"], "chapter", c["order_index"])
+                )
+    
+    conn.commit()
+    conn.close()
 
 # Endpoints
 @app.get("/api/stories", response_model=List[Story])
@@ -54,12 +91,66 @@ async def create_story(story: Story):
     cursor = conn.cursor()
     cursor.execute("INSERT INTO stories (title) VALUES (?)", (story.title,))
     story_id = cursor.lastrowid
-    # Create first chapter automatically
-    cursor.execute("INSERT INTO chapters (story_id, title, content, order_index) VALUES (?, ?, ?, ?)", 
-                   (story_id, "Chương 1", "", 1))
+    
+    # Create default folders
+    cursor.execute("INSERT INTO nodes (story_id, name, type, category) VALUES (?, ?, ?, ?)", (story_id, "Chương", "folder", "chapter"))
+    chapters_folder_id = cursor.lastrowid
+    
+    cursor.execute("INSERT INTO nodes (story_id, name, type, category) VALUES (?, ?, ?, ?)", (story_id, "Quy tắc", "folder", "rule"))
+    cursor.execute("INSERT INTO nodes (story_id, name, type, category) VALUES (?, ?, ?, ?)", (story_id, "Nhân vật", "folder", "character"))
+    cursor.execute("INSERT INTO nodes (story_id, name, type, category) VALUES (?, ?, ?, ?)", (story_id, "Vật phẩm", "folder", "item"))
+    
+    # Create first chapter file
+    cursor.execute("INSERT INTO nodes (story_id, parent_id, name, type, content, category, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                   (story_id, chapters_folder_id, "Chương 1", "file", "", "chapter", 1))
+    
     conn.commit()
     conn.close()
     return {"id": story_id, "title": story.title}
+
+@app.get("/api/stories/{story_id}/nodes", response_model=List[Node])
+async def get_nodes(story_id: int):
+    conn = database.get_db_connection()
+    nodes = conn.execute("SELECT * FROM nodes WHERE story_id = ? ORDER BY type DESC, order_index ASC, name ASC", (story_id,)).fetchall()
+    conn.close()
+    return [dict(n) for n in nodes]
+
+@app.post("/api/nodes", response_model=Node)
+async def create_node(node: Node):
+    conn = database.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO nodes (story_id, parent_id, name, type, content, category, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (node.story_id, node.parent_id, node.name, node.type, node.content or "", node.category, node.order_index)
+    )
+    node.id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return node
+
+@app.patch("/api/nodes/{node_id}")
+async def update_node(node_id: int, data: dict = Body(...)):
+    conn = database.get_db_connection()
+    # Dynamic update
+    allowed_fields = ["name", "content", "parent_id", "order_index"]
+    items = [(k, v) for k, v in data.items() if k in allowed_fields]
+    if items:
+        set_clause = ", ".join([f"{k} = ?" for k, v in items])
+        values = [v for k, v in items] + [node_id]
+        conn.execute(f"UPDATE nodes SET {set_clause} WHERE id = ?", values)
+        conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+@app.delete("/api/nodes/{node_id}")
+async def delete_node(node_id: int):
+    conn = database.get_db_connection()
+    # Recursive delete could be complex in SQLite without triggers, but let's do a simple one for now
+    # or just delete the node and orphans stay? (Better to use cascade or just a simple delete for now)
+    conn.execute("DELETE FROM nodes WHERE id = ? OR parent_id = ?", (node_id, node_id)) # Simple 1-level deep delete
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
 
 @app.post("/api/chapters/{story_id}", response_model=Chapter)
 async def add_chapter(story_id: int):
@@ -105,9 +196,13 @@ async def chat(req: ChatRequest):
     conn.close()
 
     async def stream_chat():
-        generator = await writer.generate_chat_response(req.story_context, chat_history + [{"role": "user", "content": req.message}])
+        generator = await writer.chat_node(
+            req.story_id, 
+            req.message, 
+            chat_history
+        )
         full_response = ""
-        for chunk in generator:
+        async for chunk in generator:
             full_response += chunk
             yield chunk
         
@@ -139,14 +234,15 @@ async def write(req: WriteRequest):
     conn.close()
 
     async def stream_write():
-        generator = await writer.generate_writing_response(
-            req.story_context, 
+        generator = await writer.writing_node(
+            req.story_id, 
+            req.story_context,
             req.instruction, 
-            req.selection_context,
+            selection=req.selection_context,
             previous_chapters=prev_chaps_content,
             chat_history=chat_history
         )
-        for chunk in generator:
+        async for chunk in generator:
             yield chunk
 
     return StreamingResponse(stream_write(), media_type="text/plain")
