@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Novelist - Sáng tác cùng Gemma 4</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <div id="app">
+        <!-- Sidebar: Chapter List -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <h2>AI Novelist</h2>
+                <button id="new-story-btn" title="Truyện mới">+</button>
+            </div>
+            <div id="chapter-list">
+                <!-- Chapters will be loaded here -->
+            </div>
+            <div class="sidebar-footer">
+                <button id="add-chapter-btn">+ Chương mới</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area (Split Panes) -->
+        <main id="main-content">
+            <!-- Left Pane: Chat Bot -->
+            <section id="chat-pane">
+                <div class="pane-header">
+                    <h3>Trợ lý ý tưởng</h3>
+                </div>
+                <div id="chat-messages">
+                    <!-- Chat messages will be loaded here -->
+                </div>
+                <div class="chat-input-container">
+                    <textarea id="chat-input" placeholder="Nhập ý tưởng hoặc yêu cầu..."></textarea>
+                    <button id="send-chat-btn">Gửi</button>
+                </div>
+            </section>
+
+            <!-- Right Pane: Story Editor -->
+            <section id="editor-pane">
+                <div class="pane-header">
+                    <h3 id="current-chapter-title">Chương 1</h3>
+                    <div class="editor-tools">
+                        <button id="ai-full-write-btn" style="background: var(--accent-color); margin-right: 10px;">AI viết truyện</button>
+                        <button id="save-btn">Lưu</button>
+                    </div>
+                </div>
+                <div id="story-editor">
+                    <!-- Story content blocks will be loaded here -->
+                </div>
+                
+                <!-- Floating Toolbar for selection -->
+                <div id="floating-toolbar" class="hidden">
+                    <button id="ai-rewrite-btn">Sửa dòng</button>
+                    <button id="ai-continue-btn">Viết tiếp</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="hidden">
+        <div class="modal">
+            <h3 id="modal-title">Tên truyện mới</h3>
+            <input type="text" id="modal-input">
+            <div class="modal-actions">
+                <button id="modal-cancel">Hủy</button>
+                <button id="modal-confirm">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
