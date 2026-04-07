@@ -1,0 +1,30 @@
+[package]
+name = "ai-novelist"
+version = "0.1.0"
+description = "AI Novelist IDE - Trợ lý Sáng tác Truyện"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5.6", features = [] }
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+tauri = { version = "2.10.3", features = [] }
+tauri-plugin-log = "2"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+tokio = { version = "1", features = ["full"] }
+dotenvy = "0.15"
+chrono = { version = "0.4", features = ["serde"] }
+walkdir = "2"
+futures-util = "0.3"
+tauri-plugin-dialog = "2.0.0-rc.0"

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Novelist IDE - Sáng tác đỉnh cao</title>
+    <title>AI Novelist IDE</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,13 +37,14 @@
         <aside id="sidebar">
             <div class="sidebar-section" id="section-stories">
                 <div class="sidebar-header">
-                    <span>DANH SÁCH TRUYỆN</span>
+                    <span>THƯ MỤC TRUYỆN</span>
                     <div class="sidebar-actions">
-                        <button id="new-story-btn" title="Truyệm mới"><i data-lucide="plus-square"></i></button>
+                        <button id="new-story-btn" title="Tạo truyện mới"><i data-lucide="folder-plus"></i></button>
+                        <button id="open-folder-btn" title="Mở thư mục"><i data-lucide="folder-open"></i></button>
                     </div>
                 </div>
                 <div id="stories-list" class="sidebar-list">
-                    <!-- Stories will be loaded here -->
+                    <!-- This area can be used for "Recent Folders" if needed, but for now we'll keep it simple -->
                 </div>
             </div>
 
@@ -63,7 +64,7 @@
                 <div class="status-item"><i data-lucide="book"></i> <span id="status-story-name">No story</span></div>
                 <div class="status-item"><i data-lucide="hash"></i> <span id="word-count">Chars: 0</span></div>
                 <div class="status-item"><i data-lucide="cpu"></i> <span id="ai-model">Gemma 4</span></div>
-                <div class="status-item" id="sync-status"><i data-lucide="cloud-check"></i> Connected</div>
+                <div class="status-item" id="sync-status"><i data-lucide="hard-drive"></i> File System</div>
             </div>
         </aside>
 

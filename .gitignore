@@ -1,21 +1,25 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-ENV/
-env/
+# Rust
+src-tauri/target/
+
+# Node
+node_modules/
+
+# Environment
 .env
 
-# Database
-*.db
-*.sqlite3
+# Python (legacy - to be removed)
+__pycache__/
+.venv/
+*.pyc
 
-# IDE
-.vscode/
-.idea/
+# Data
+data/novel.db
 
 # OS
 .DS_Store
-Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
