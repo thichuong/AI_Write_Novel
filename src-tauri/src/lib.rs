@@ -1,5 +1,5 @@
-mod fs_manager;
-mod ai_agent;
+mod fs;
+mod ai;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,20 +19,20 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             // File System commands
-            fs_manager::initialize_story_folders,
-            fs_manager::list_nodes,
-            fs_manager::read_file,
-            fs_manager::write_file,
-            fs_manager::create_node,
-            fs_manager::rename_node,
-            fs_manager::delete_node,
-            fs_manager::get_chat_history,
-            fs_manager::save_chat_history,
-            fs_manager::get_story_context,
-            fs_manager::get_previous_chapters,
+            fs::initialize_story_folders,
+            fs::list_nodes,
+            fs::read_file,
+            fs::write_file,
+            fs::create_node,
+            fs::rename_node,
+            fs::delete_node,
+            fs::get_chat_history,
+            fs::save_chat_history,
+            fs::get_story_context,
+            fs::get_previous_chapters,
             // AI Agent commands
-            ai_agent::ai_chat,
-            ai_agent::ai_write,
+            ai::commands::ai_chat,
+            ai::commands::ai_write,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
