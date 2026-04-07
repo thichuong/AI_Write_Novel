@@ -499,3 +499,21 @@ body {
 
 #modal-cancel { background: var(--bg-accent); color: white; }
 #modal-confirm { background: var(--accent-color); color: white; }
+
+.thinking-box {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--text-dim);
+    border-left: 3px solid var(--border-color);
+    padding-left: 10px;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+
+.answer-box {
+    white-space: pre-wrap;
+}
+

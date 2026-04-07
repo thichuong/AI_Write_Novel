@@ -114,10 +114,32 @@ function setupEventListeners() {
 
 // Setup AI streaming event listeners
 function setupAIListeners() {
+    listen('ai-chat-stream-thought', (event) => {
+        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
+        if (aiMsgDiv) {
+            let thoughtBox = aiMsgDiv.querySelector('.thinking-box');
+            if (!thoughtBox) {
+                // Remove initial text node if any, though it shouldn't be there
+                thoughtBox = document.createElement('div');
+                thoughtBox.className = 'thinking-box';
+                // Insert thought box at the top
+                aiMsgDiv.insertBefore(thoughtBox, aiMsgDiv.firstChild);
+            }
+            thoughtBox.innerText += event.payload;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    });
+
     listen('ai-chat-stream', (event) => {
         const aiMsgDiv = document.querySelector('.message.assistant.streaming');
         if (aiMsgDiv) {
-            aiMsgDiv.innerText += event.payload;
+            let answerBox = aiMsgDiv.querySelector('.answer-box');
+            if (!answerBox) {
+                answerBox = document.createElement('div');
+                answerBox.className = 'answer-box';
+                aiMsgDiv.appendChild(answerBox);
+            }
+            answerBox.innerText += event.payload;
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     });
@@ -126,7 +148,13 @@ function setupAIListeners() {
         const aiMsgDiv = document.querySelector('.message.assistant.streaming');
         if (aiMsgDiv) {
             aiMsgDiv.classList.remove('streaming');
-            state.chatHistory.push({ role: "assistant", content: aiMsgDiv.innerText });
+            let thoughtBox = aiMsgDiv.querySelector('.thinking-box');
+            if (thoughtBox) {
+                thoughtBox.style.display = 'none';
+            }
+            let answerBox = aiMsgDiv.querySelector('.answer-box');
+            const finalText = answerBox ? answerBox.innerText : aiMsgDiv.innerText;
+            state.chatHistory.push({ role: "assistant", content: finalText });
             await saveChatHistory();
         }
         showStatus("Ready");

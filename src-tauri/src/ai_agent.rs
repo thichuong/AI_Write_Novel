@@ -96,6 +96,7 @@ struct CandidatePart {
     text: Option<String>,
     #[serde(rename = "functionCall")]
     function_call: Option<FunctionCallData>,
+    thought: Option<bool>,
 }
 
 /// Lấy API key từ .env
@@ -407,7 +408,11 @@ async fn stream_gemini_response(
                                 if let Some(parts) = &content.parts {
                                     for part in parts {
                                         if let Some(text) = &part.text {
-                                            app_handle.emit(event_name, text.clone()).ok();
+                                            if part.thought.unwrap_or(false) {
+                                                app_handle.emit(&format!("{}-thought", event_name), text.clone()).ok();
+                                            } else {
+                                                app_handle.emit(event_name, text.clone()).ok();
+                                            }
                                         }
                                         if let Some(fc) = &part.function_call {
                                             // Emit tool call event
