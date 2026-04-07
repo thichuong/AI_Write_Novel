@@ -12,10 +12,10 @@
     --border-color: #1e293b;
     --glass-bg: rgba(15, 17, 20, 0.8);
     --glass-border: rgba(255, 255, 255, 0.05);
-    
+
     --sidebar-width: 280px;
     --activity-bar-width: 60px;
-    --chat-panel-width: 350px;
+    --chat-panel-width: 450px;
 }
 
 * {
@@ -90,8 +90,13 @@ body {
     max-height: 50%;
 }
 
-#section-stories { border-bottom: 1px solid var(--border-color); }
-#section-explorer { flex-grow: 1; }
+#section-stories {
+    border-bottom: 1px solid var(--border-color);
+}
+
+#section-explorer {
+    flex-grow: 1;
+}
 
 .sidebar-header {
     padding: 12px 20px;
@@ -182,10 +187,17 @@ body {
     color: var(--text-dim);
 }
 
-.node-item i { width: 16px; }
+.node-item i {
+    width: 16px;
+}
 
-.node-folder i { color: #facc15; }
-.node-file i { color: var(--text-dim); }
+.node-folder i {
+    color: #facc15;
+}
+
+.node-file i {
+    color: var(--text-dim);
+}
 
 .node-actions {
     display: none;
@@ -206,7 +218,9 @@ body {
     font-size: 10px;
 }
 
-.node-actions button:hover { color: var(--text-primary); }
+.node-actions button:hover {
+    color: var(--text-primary);
+}
 
 .folder-contents {
     padding-left: 15px;
@@ -250,14 +264,30 @@ body {
 
 #tab-bar {
     height: 40px;
+    min-height: 40px;
+    flex-shrink: 0;
     background-color: var(--bg-tab);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     overflow-x: auto;
+    overflow-y: hidden;
+    /* Custom scrollbar for tab bar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+#tab-bar::-webkit-scrollbar {
+    height: 3px;
+}
+
+#tab-bar::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 3px;
 }
 
 #tabs-list {
     display: flex;
+    height: 100%;
 }
 
 .tab {
@@ -271,6 +301,7 @@ body {
     cursor: pointer;
     background: transparent;
     min-width: 120px;
+    flex-shrink: 0;
 }
 
 .tab.active {
@@ -285,7 +316,9 @@ body {
     opacity: 0.5;
 }
 
-.tab-close:hover { opacity: 1; }
+.tab-close:hover {
+    opacity: 1;
+}
 
 #editor-area {
     flex-grow: 1;
@@ -293,6 +326,8 @@ body {
     flex-direction: column;
     padding: 0;
     position: relative;
+    min-height: 0;
+    overflow: hidden;
 }
 
 #editor-header {
@@ -309,13 +344,14 @@ body {
 
 #story-editor-wrapper {
     flex-grow: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
+    overflow-x: hidden;
     padding: 20px 40px 100px;
-    mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
 }
 
 #story-editor {
-    max-width: 800px;
+    width: 600px;
+    max-width: 100%;
     margin: 0 auto;
     min-height: 500px;
     font-family: 'Lora', serif;
@@ -324,6 +360,8 @@ body {
     color: var(--text-primary);
     outline: none;
     white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .btn-primary {
@@ -338,7 +376,9 @@ body {
     box-shadow: 0 4px 15px var(--accent-glow);
 }
 
-.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
 
 .btn-secondary {
     background: var(--bg-accent);
@@ -437,7 +477,7 @@ body {
     padding: 8px 20px;
     display: flex;
     gap: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     z-index: 1000;
 }
 
@@ -453,16 +493,25 @@ body {
     gap: 5px;
 }
 
-#floating-toolbar button:hover { color: var(--accent-color); }
+#floating-toolbar button:hover {
+    color: var(--accent-color);
+}
 
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}
 
 /* Modal */
 #modal-overlay {
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8);
-    display: flex; align-items: center; justify-content: center;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: 2000;
 }
 
@@ -497,8 +546,15 @@ body {
     border: none;
 }
 
-#modal-cancel { background: var(--bg-accent); color: white; }
-#modal-confirm { background: var(--accent-color); color: white; }
+#modal-cancel {
+    background: var(--bg-accent);
+    color: white;
+}
+
+#modal-confirm {
+    background: var(--accent-color);
+    color: white;
+}
 
 .thinking-box {
     font-size: 0.85rem;
@@ -516,4 +572,3 @@ body {
 .answer-box {
     white-space: pre-wrap;
 }
-
