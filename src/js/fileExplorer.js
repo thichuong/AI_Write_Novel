@@ -1,9 +1,8 @@
 import { state } from './state.js';
-import { invoke, openDialog } from './services/tauri.js';
+import { fs, path, listen, openDialog } from './services/tauri.js';
 import { escapeAttr, showStatus } from './utils.js';
 import { openFile, renderTabs } from './editor.js';
 import { loadChatHistory } from './ai.js';
-import { listen } from './services/tauri.js';
 
 export function setupExplorerListeners() {
     listen('file-system-changed', () => {
@@ -11,6 +10,22 @@ export function setupExplorerListeners() {
             loadNodes(state.currentStoryPath);
         }
     });
+
+    // Listen to sl-tree events if needed
+    const explorerTree = document.getElementById('explorer-tree');
+    if (explorerTree) {
+        explorerTree.addEventListener('sl-selection-change', (event) => {
+            const selectedItem = event.detail.selection[0];
+            if (selectedItem && selectedItem.dataset.type === 'file') {
+                const node = {
+                    path: selectedItem.dataset.path,
+                    name: selectedItem.dataset.name,
+                    nodeType: 'file'
+                };
+                openFile(node);
+            }
+        });
+    }
 }
 
 export async function handleOpenFolder() {
@@ -47,12 +62,12 @@ export async function handleCreateStory() {
     }
 }
 
-export async function openStory(path) {
+export async function openStory(storyPath) {
     const storyEditor = document.getElementById('story-editor');
     const currentFileName = document.getElementById('current-file-name');
     const statusStoryName = document.getElementById('status-story-name');
 
-    if (state.currentStoryPath && state.currentStoryPath !== path) {
+    if (state.currentStoryPath && state.currentStoryPath !== storyPath) {
         state.openTabs = [];
         state.activeFilePath = null;
         renderTabs();
@@ -60,23 +75,51 @@ export async function openStory(path) {
         if (currentFileName) currentFileName.innerText = "Chọn một file để bắt đầu";
     }
 
-    state.currentStoryPath = path;
-    const folderName = path.split(/[/\\]/).pop() || path;
+    state.currentStoryPath = storyPath;
+    
+    // Get folder name from path safely
+    let folderName = "Story";
+    try {
+        folderName = await path.basename(storyPath);
+    } catch(e) {
+        folderName = storyPath.split(/[/\\]/).pop() || storyPath;
+    }
+    
     if (statusStoryName) statusStoryName.innerText = folderName;
     
     const storyTitleDisplay = document.getElementById('story-title-display');
     if (storyTitleDisplay) storyTitleDisplay.innerText = folderName.toUpperCase();
 
-    localStorage.setItem('last_story_path', path);
+    localStorage.setItem('last_story_path', storyPath);
 
-    await window.loadNodes(path);
+    await window.loadNodes(storyPath);
     await loadChatHistory();
 }
 
 export async function loadNodes(rootPath) {
     if (!rootPath) return;
     try {
-        state.nodes = await invoke('list_nodes', { rootPath });
+        // Use Tauri FS readDir instead of Rust invoke
+        const entries = await fs.readDir(rootPath);
+        
+        // Map entries to simplified node format with proper absolute paths
+        state.nodes = await Promise.all(entries.map(async (entry) => {
+            const entryPath = entry.path || await path.join(rootPath, entry.name);
+            return {
+                name: entry.name || "unknown",
+                path: entryPath,
+                nodeType: entry.isDirectory ? 'folder' : 'file',
+                children: []
+            };
+        }));
+        
+        state.nodes.sort((a, b) => {
+            // Folders first, then alphabetically
+            if (a.nodeType === 'folder' && b.nodeType !== 'folder') return -1;
+            if (a.nodeType !== 'folder' && b.nodeType === 'folder') return 1;
+            return a.name.localeCompare(b.name);
+        });
+        
         renderExplorer();
     } catch (err) {
         console.error("Failed to load nodes:", err);
@@ -93,70 +136,58 @@ export function renderExplorer() {
     state.nodes.forEach(node => {
         explorerTree.appendChild(createNodeElement(node));
     });
-    if (window.lucide) window.lucide.createIcons();
 }
 
-export function createNodeElement(node) {
-    const container = document.createElement('div');
-    container.className = 'explorer-node';
+function createNodeElement(node) {
+    const treeItem = document.createElement('sl-tree-item');
+    treeItem.innerText = node.name; // Label in default slot
+    treeItem.dataset.path = node.path;
+    treeItem.dataset.name = node.name;
+    treeItem.dataset.type = node.nodeType;
 
-    const item = document.createElement('div');
-    item.className = `node-item ${node.path === state.activeFilePath ? 'active' : ''} ${node.nodeType === 'folder' ? 'node-folder' : 'node-file'}`;
+    // Set icons
+    const customIcon = document.createElement('sl-icon');
+    customIcon.slot = 'icon';
+    customIcon.name = node.nodeType === 'folder' ? 'folder' : 'file-earmark-text';
+    treeItem.appendChild(customIcon);
 
-    const icon = node.nodeType === 'folder' ? 'folder' : 'file-text';
-    item.innerHTML = `
-        <i data-lucide="${icon}" class="node-icon"></i>
-        <span class="node-name">${node.name}</span>
-        <div class="node-actions">
-            ${node.nodeType === 'folder' ? `
-                <button onclick="event.stopPropagation(); window.showNodeModal('${escapeAttr(node.path)}', 'file')" title="Add File"><i data-lucide="file-plus"></i></button>
-                <button onclick="event.stopPropagation(); window.showNodeModal('${escapeAttr(node.path)}', 'folder')" title="Add Folder"><i data-lucide="folder-plus"></i></button>
-            ` : ''}
-            <button onclick="event.stopPropagation(); window.renameNodePrompt('${escapeAttr(node.path)}', '${escapeAttr(node.name)}')" title="Rename"><i data-lucide="pencil"></i></button>
-            <button onclick="event.stopPropagation(); window.deleteNode('${escapeAttr(node.path)}')" title="Delete"><i data-lucide="trash-2"></i></button>
-        </div>
-    `;
-
-    item.onclick = async () => {
-        if (node.nodeType === 'folder') {
-            let contents = container.querySelector('.folder-contents');
-            if (contents) {
-                contents.classList.toggle('hidden');
-            } else {
+    if (node.nodeType === 'folder') {
+        treeItem.lazy = true;
+        
+        // Load children on expand
+        treeItem.addEventListener('sl-expand', async (event) => {
+            if (treeItem.children.length <= 1) { // Only icon slot exists
                 try {
-                    const children = await invoke('list_nodes', { 
-                        rootPath: state.currentStoryPath, 
-                        parentPath: node.path 
+                    const children = await fs.readDir(node.path);
+                    const childNodes = await Promise.all(children.map(async (entry) => {
+                        const entryPath = entry.path || await path.join(node.path, entry.name);
+                        return {
+                            name: entry.name || "unknown",
+                            path: entryPath,
+                            nodeType: entry.isDirectory ? 'folder' : 'file'
+                        };
+                    }));
+                    
+                    childNodes.sort((a, b) => {
+                        if (a.nodeType === 'folder' && b.nodeType !== 'folder') return -1;
+                        if (a.nodeType !== 'folder' && b.nodeType === 'folder') return 1;
+                        return a.name.localeCompare(b.name);
                     });
-                    node.children = children;
-                    contents = document.createElement('div');
-                    contents.className = 'folder-contents';
-                    children.forEach(child => {
-                        contents.appendChild(createNodeElement(child));
+                    
+                    childNodes.forEach(child => {
+                        treeItem.appendChild(createNodeElement(child));
                     });
-                    container.appendChild(contents);
                 } catch (err) {
-                    console.error("Failed to load folder contents:", err);
+                    console.error("Failed to load sub-folder:", err);
                 }
             }
-        } else {
-            openFile(node);
-        }
-    };
-
-    container.appendChild(item);
-
-    // Initial render if children exist
-    if (node.nodeType === 'folder' && node.children && node.children.length > 0) {
-        const contents = document.createElement('div');
-        contents.className = 'folder-contents';
-        node.children.forEach(child => {
-            contents.appendChild(createNodeElement(child));
         });
-        container.appendChild(contents);
     }
 
-    return container;
+    // Add context menu / actions (simplified for now as sl-tree handles selection)
+    // We can add buttons in a slot if needed but standard sl-tree-item is cleaner
+    
+    return treeItem;
 }
 
 export function showNodeModal(parentPath, type) {
@@ -167,16 +198,16 @@ window.showNodeModal = showNodeModal;
 export async function deleteNode(nodePath) {
     if (!confirm("Bạn có chắc chắn muốn xóa? Thư mục con cũng sẽ bị xóa.")) return;
     try {
-        await invoke('delete_node', {
-            rootPath: state.currentStoryPath,
-            nodePath,
-        });
-        await loadNodes(state.currentStoryPath);
+        await fs.remove(nodePath, { recursive: true });
+        if (state.currentStoryPath) {
+            await loadNodes(state.currentStoryPath);
+        }
         if (state.activeFilePath === nodePath) {
             import('./editor.js').then(module => module.closeTab(nodePath));
         }
     } catch (err) {
         console.error("Delete failed:", err);
+        alert("Xóa thất bại: " + err);
     }
 }
 window.deleteNode = deleteNode;
@@ -185,3 +216,4 @@ export function renameNodePrompt(nodePath, oldName) {
     window.showModal("Đổi tên", "rename-node", { nodePath, oldName });
 }
 window.renameNodePrompt = renameNodePrompt;
+

@@ -10,8 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Shoelace UI -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/themes/dark.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/shoelace-autoloader.js"></script>
 </head>
-<body class="dark-pro">
+<body class="dark-pro sl-theme-dark">
     <div id="app">
         <!-- 1. Activity Bar -->
         <nav id="activity-bar">
@@ -55,9 +58,9 @@
                         <button id="refresh-explorer" title="Làm mới"><i data-lucide="rotate-cw"></i></button>
                     </div>
                 </div>
-                <div id="explorer-tree">
+                <sl-tree id="explorer-tree" selection="single">
                     <!-- Recursive Node Tree -->
-                </div>
+                </sl-tree>
             </div>
             
             <div id="sidebar-status-area">

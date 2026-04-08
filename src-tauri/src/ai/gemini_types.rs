@@ -44,7 +44,7 @@ pub struct FunctionResponseData {
     pub response: serde_json::Value,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenerationConfig {
     pub temperature: f32,
     #[serde(rename = "maxOutputTokens")]
@@ -53,7 +53,7 @@ pub struct GenerationConfig {
     pub thinking_config: Option<ThinkingConfig>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ThinkingConfig {
     #[serde(rename = "thinkingLevel")]
     pub thinking_level: String,

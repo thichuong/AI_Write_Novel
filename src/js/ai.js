@@ -3,6 +3,40 @@ import { invoke, listen } from './services/tauri.js';
 import { showStatus } from './utils.js';
 
 export function setupAIListeners() {
+    listen('ai-agent-step', (event) => {
+        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
+        if (aiMsgDiv) {
+            let stepBadge = aiMsgDiv.querySelector('.agent-step-badge');
+            if (!stepBadge) {
+                stepBadge = document.createElement('div');
+                stepBadge.className = 'agent-step-badge';
+                aiMsgDiv.prepend(stepBadge);
+            }
+            
+            const phaseMap = {
+                'analyze': '🔍 Phân tích ngữ cảnh...',
+                'execute': '⚙️ Đang thực thi yêu cầu...',
+                'summarize': '📝 Tổng hợp & Cập nhật bộ nhớ...'
+            };
+            stepBadge.innerText = phaseMap[event.payload] || event.payload;
+            
+            // Nếu chuyển phase, xóa tool status cũ
+            const toolBox = aiMsgDiv.querySelector('.tool-status-box');
+            if (toolBox) toolBox.remove();
+        }
+    });
+
+    listen('ai-chat-stream-tool-done', () => {
+        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
+        if (aiMsgDiv) {
+            let toolBox = aiMsgDiv.querySelector('.tool-status-box');
+            if (toolBox) {
+                toolBox.innerText = toolBox.innerText.replace('🔍', '✅');
+                toolBox.innerText += " - Đang chờ AI phản hồi...";
+            }
+        }
+    });
+
     listen('ai-chat-stream-thought', (event) => {
         const aiMsgDiv = document.querySelector('.message.assistant.streaming');
         if (aiMsgDiv) {

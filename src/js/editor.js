@@ -1,14 +1,11 @@
 import { state } from './state.js';
-import { invoke } from './services/tauri.js';
+import { invoke, fs } from './services/tauri.js';
 import { escapeAttr, showStatus } from './utils.js';
 import { renderExplorer } from './fileExplorer.js';
 
 export async function openFile(node) {
     try {
-        const content = await invoke('read_file', {
-            rootPath: state.currentStoryPath,
-            filePath: node.path,
-        });
+        const content = await fs.readTextFile(node.path);
 
         const tab = { name: node.name, path: node.path, content };
 
@@ -91,11 +88,7 @@ export async function saveActiveFile(silent = false) {
     if (tab) tab.content = content;
 
     try {
-        await invoke('write_file', {
-            rootPath: state.currentStoryPath,
-            filePath: state.activeFilePath,
-            content,
-        });
+        await fs.writeTextFile(state.activeFilePath, content);
         if (!silent) showStatus("Đã lưu ✓");
         
         const wordCount = document.getElementById('word-count');

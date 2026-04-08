@@ -8,6 +8,12 @@ export const listen = window.__TAURI__?.event?.listen || (async (event, handler)
     return () => {}; // return dummy unlisten function
 });
 
+// Tauri Plugin FS API (v2)
+export const fs = window.__TAURI__?.fs || {};
+
+// Tauri Path API
+export const path = window.__TAURI__?.path || {};
+
 // Tauri Dialog API (v2)
 export const openDialog = async (options) => {
     if (window.__TAURI__?.dialog?.open) {

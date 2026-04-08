@@ -8,8 +8,17 @@
   "permissions": [
     "core:default",
     "core:event:default",
-    "core:event:allow-listen",
-    "core:event:allow-emit",
-    "dialog:default"
+    "core:path:default",
+    "dialog:default",
+    "fs:default",
+    "fs:allow-read",
+    "fs:allow-read-dir",
+    "fs:allow-write",
+    "fs:allow-mkdir",
+    "fs:allow-remove",
+    "fs:allow-rename",
+    "fs:allow-exists",
+    "fs:scope-desktop-recursive",
+    "fs:scope-home-recursive"
   ]
 }

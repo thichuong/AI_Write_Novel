@@ -10,6 +10,7 @@ mod fs;
 #[allow(clippy::expect_used)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -26,16 +27,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // File System commands
             fs::initialize_story_folders,
-            fs::list_nodes,
-            fs::read_file,
-            fs::write_file,
-            fs::create_node,
-            fs::rename_node,
-            fs::delete_node,
             fs::get_chat_history,
             fs::save_chat_history,
-            fs::get_story_context,
-            fs::get_previous_chapters,
             // AI Agent commands
             ai::chat::ai_chat,
         ])
