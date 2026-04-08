@@ -38,7 +38,6 @@ pub fn run() {
             fs::get_previous_chapters,
             // AI Agent commands
             ai::chat::ai_chat,
-            ai::write::ai_write,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -15,14 +15,14 @@ pub fn get_model() -> String {
     std::env::var("AI_MODEL").unwrap_or_else(|_| "gemma-4-31b-it".to_string())
 }
 
-/// Gửi request và stream response về frontend qua Tauri events
+/// Gửi request và stream response về frontend, đồng thời trả về toàn bộ các Parts đã nhận được
 pub async fn stream_gemini_response(
     app_handle: &AppHandle,
     api_key: &str,
     model: &str,
     request: &GeminiRequest,
     event_name: &str,
-) -> Result<(), String> {
+) -> Result<Vec<super::gemini_types::GeminiPart>, String> {
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?key={api_key}&alt=sse"
     );
@@ -43,6 +43,7 @@ pub async fn stream_gemini_response(
 
     let mut stream = response.bytes_stream();
     let mut buffer = String::new();
+    let mut accumulated_parts: Vec<super::gemini_types::GeminiPart> = Vec::new();
 
     while let Some(chunk_result) = stream.next().await {
         let chunk = chunk_result.map_err(|e| format!("Stream error: {e}"))?;
@@ -66,6 +67,7 @@ pub async fn stream_gemini_response(
                                 if let Some(parts) = &content.parts {
                                     for part in parts {
                                         if let Some(text) = &part.text {
+                                            // Stream text to UI
                                             if part.thought.unwrap_or(false) {
                                                 app_handle
                                                     .emit(
@@ -76,9 +78,25 @@ pub async fn stream_gemini_response(
                                             } else {
                                                 app_handle.emit(event_name, text.clone()).ok();
                                             }
+
+                                            // Accumulate text parts
+                                            // Nếu part trước đó cũng là text, hãy gộp lại (hoặc để nguyên tùy logic, nhưng Gemini API yêu cầu gộp text liên tiếp)
+                                            if let Some(super::gemini_types::GeminiPart::Text {
+                                                text: last_text,
+                                            }) = accumulated_parts.last_mut()
+                                            {
+                                                last_text.push_str(text);
+                                            } else {
+                                                accumulated_parts.push(
+                                                    super::gemini_types::GeminiPart::Text {
+                                                        text: text.clone(),
+                                                    },
+                                                );
+                                            }
                                         }
+
                                         if let Some(fc) = &part.function_call {
-                                            // Emit tool call event
+                                            // Emit tool call event so UI knows what's happening
                                             app_handle
                                                 .emit(
                                                     &format!("{event_name}-tool"),
@@ -88,6 +106,13 @@ pub async fn stream_gemini_response(
                                                     }),
                                                 )
                                                 .ok();
+
+                                            // Accumulate function call
+                                            accumulated_parts.push(
+                                                super::gemini_types::GeminiPart::FunctionCall {
+                                                    function_call: fc.clone(),
+                                                },
+                                            );
                                         }
                                     }
                                 }
@@ -101,5 +126,5 @@ pub async fn stream_gemini_response(
 
     // Phát sự kiện kết thúc
     app_handle.emit(&format!("{event_name}-done"), ()).ok();
-    Ok(())
+    Ok(accumulated_parts)
 }

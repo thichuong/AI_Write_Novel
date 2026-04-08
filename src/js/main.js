@@ -1,13 +1,14 @@
 import { state } from './state.js';
 import { debounce } from './utils.js';
-import { setupAIListeners, sendChat, clearChat, runAiWriting } from './ai.js';
-import { handleCreateStory, handleOpenFolder, openStory, loadNodes } from './fileExplorer.js';
+import { setupAIListeners, sendChat, clearChat } from './ai.js';
+import { handleCreateStory, handleOpenFolder, openStory, loadNodes, setupExplorerListeners } from './fileExplorer.js';
 import { saveActiveFile } from './editor.js';
 import { invoke } from './services/tauri.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     setupAIListeners();
+    setupExplorerListeners();
     
     // Load last opened folder
     const lastPath = localStorage.getItem('last_story_path');
@@ -37,12 +38,8 @@ function setupEventListeners() {
     if (refreshBtn) refreshBtn.onclick = () => loadNodes(state.currentStoryPath);
 
     // Editor Actions
-    const saveBtn = document.getElementById('save-btn');
-    if (saveBtn) saveBtn.onclick = () => saveActiveFile();
+    // (Manual save button removed, using auto-save and Ctrl+S)
     
-    const aiFullWriteBtn = document.getElementById('ai-full-write-btn');
-    if (aiFullWriteBtn) aiFullWriteBtn.onclick = () => runAiWriting("full");
-
     // Chat Actions
     const sendChatBtn = document.getElementById('send-chat-btn');
     if (sendChatBtn) sendChatBtn.onclick = sendChat;
@@ -64,21 +61,7 @@ function setupEventListeners() {
         modalCancel.onclick = () => modalOverlay.classList.add('hidden');
     }
 
-    // Floating Toolbar
-    const rewriteBtn = document.getElementById('ai-rewrite-btn');
-    if (rewriteBtn) rewriteBtn.onclick = () => runAiWriting("rewrite");
-    
-    const continueBtn = document.getElementById('ai-continue-btn');
-    if (continueBtn) continueBtn.onclick = () => runAiWriting("continue");
-
-    // Click outside toolbar
     const storyEditor = document.getElementById('story-editor');
-    document.addEventListener('mousedown', (e) => {
-        const toolbar = document.getElementById('floating-toolbar');
-        if (toolbar && storyEditor && !toolbar.contains(e.target) && !storyEditor.contains(e.target)) {
-            toolbar.classList.add('hidden');
-        }
-    });
 
     // Editor Auto-save on input (debounced)
     if (storyEditor) {

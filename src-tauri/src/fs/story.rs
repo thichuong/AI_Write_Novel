@@ -37,6 +37,19 @@ pub fn initialize_story_folders(root_path: &str) -> Result<(), String> {
         fs::write(&chat_file, "[]").map_err(|e| e.to_string())?;
     }
 
+    // Tạo file memory.md rỗng nếu chưa có
+    let memory_file = story_dir.join("memory.md");
+    if !memory_file.exists() {
+        fs::write(
+            &memory_file,
+            "# BỘ NHỚ TRUYỆN (MEMORY)\n\n\
+             ## Cốt truyện chung\n(Chưa có nội dung)\n\n\
+             ## Tóm tắt nội dung đã viết\n(Chưa có nội dung)\n\n\
+             ## Tình trạng nhân vật hiện tại\n(Chưa có nội dung)\n",
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
     Ok(())
 }
 
@@ -64,8 +77,9 @@ pub fn save_chat_history(root_path: &str, history: Vec<serde_json::Value>) -> Re
 }
 
 /// Lấy context (quy tắc, nhân vật, vật phẩm) của truyện bằng cách đọc tất cả file .md
+#[deprecated(note = "Agent sẽ tự dùng tool để đọc ngữ cảnh")]
 #[tauri::command]
-pub fn get_story_context(root_path: &str) -> Result<String, String> {
+pub fn get_story_context(root_path: String) -> Result<String, String> {
     let story_dir = PathBuf::from(&root_path);
 
     let mut context = String::from("# KIẾN THỨC VỀ TRUYỆN\n\n");
@@ -106,8 +120,9 @@ pub fn get_story_context(root_path: &str) -> Result<String, String> {
 }
 
 /// Lấy nội dung các chương trước chương hiện tại
+#[deprecated(note = "Agent sẽ tự dùng tool để đọc các chương trước")]
 #[tauri::command]
-pub fn get_previous_chapters(root_path: &str, current_file: &str) -> Result<String, String> {
+pub fn get_previous_chapters(root_path: String, current_file: String) -> Result<String, String> {
     let chapters_dir = PathBuf::from(&root_path).join("Chương");
 
     if !chapters_dir.exists() {

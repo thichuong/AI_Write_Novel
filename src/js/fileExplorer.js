@@ -3,6 +3,15 @@ import { invoke, openDialog } from './services/tauri.js';
 import { escapeAttr, showStatus } from './utils.js';
 import { openFile, renderTabs } from './editor.js';
 import { loadChatHistory } from './ai.js';
+import { listen } from './services/tauri.js';
+
+export function setupExplorerListeners() {
+    listen('file-system-changed', () => {
+        if (state.currentStoryPath) {
+            loadNodes(state.currentStoryPath);
+        }
+    });
+}
 
 export async function handleOpenFolder() {
     try {

@@ -1,7 +1,6 @@
 import { state } from './state.js';
 import { invoke, listen } from './services/tauri.js';
 import { showStatus } from './utils.js';
-import { saveActiveFile } from './editor.js';
 
 export function setupAIListeners() {
     listen('ai-chat-stream-thought', (event) => {
@@ -9,10 +8,8 @@ export function setupAIListeners() {
         if (aiMsgDiv) {
             let thoughtBox = aiMsgDiv.querySelector('.thinking-box');
             if (!thoughtBox) {
-                // Remove initial text node if any, though it shouldn't be there
                 thoughtBox = document.createElement('div');
                 thoughtBox.className = 'thinking-box';
-                // Insert thought box at the top
                 aiMsgDiv.insertBefore(thoughtBox, aiMsgDiv.firstChild);
             }
             thoughtBox.innerText += event.payload;
@@ -52,32 +49,27 @@ export function setupAIListeners() {
         showStatus("Ready");
     });
 
-    listen('ai-write-stream', (event) => {
-        if (!state.aiTargetTab) return;
-        state.aiTargetTab.content += event.payload;
-        
-        if (state.activeFilePath === state.aiTargetTab.path) {
-            const storyEditor = document.getElementById('story-editor');
-            if (storyEditor) {
-                storyEditor.innerText += event.payload;
-                storyEditor.scrollTop = storyEditor.scrollHeight;
+    listen('ai-chat-stream-tool', (event) => {
+        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
+        if (aiMsgDiv) {
+            const { name, args } = event.payload;
+            let toolBox = aiMsgDiv.querySelector('.tool-status-box');
+            if (!toolBox) {
+                toolBox = document.createElement('div');
+                toolBox.className = 'tool-status-box';
+                aiMsgDiv.appendChild(toolBox);
             }
-        }
-    });
+            
+            let statusText = "";
+            if (name === "read_file") statusText = `🔍 Đang đọc: ${args.path}`;
+            else if (name === "write_file") statusText = `📝 Đang ghi: ${args.path}`;
+            else if (name === "list_directory") statusText = `📂 Đang xem thư mục: ${args.path}`;
+            else if (name === "delete_file") statusText = `🗑️ Đang xóa: ${args.path}`;
+            else statusText = `⚙️ Đang dùng: ${name}`;
 
-    listen('ai-write-stream-done', async () => {
-        showStatus("AI hoàn tất.");
-        if (state.aiTargetTab) {
-            try {
-                await invoke('write_file', {
-                    rootPath: state.currentStoryPath,
-                    filePath: state.aiTargetTab.path,
-                    content: state.aiTargetTab.content,
-                });
-            } catch (err) {
-                console.error("AI Auto-save failed:", err);
-            }
-            state.aiTargetTab = null;
+            toolBox.innerText = `[${statusText}]`;
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     });
 }
@@ -112,59 +104,6 @@ export async function sendChat() {
         console.error("AI chat failed:", err);
         aiMsgDiv.innerText = "Lỗi: " + err;
         aiMsgDiv.classList.remove('streaming');
-        showStatus("Lỗi AI");
-    }
-}
-
-export async function runAiWriting(type) {
-    if (!state.currentStoryPath) {
-        showStatus("Vui lòng mở một thư mục!");
-        return;
-    }
-    
-    if (!state.activeFilePath) {
-        showStatus("Vui lòng mở một file!");
-        return;
-    }
-
-    let instruction = "";
-    if (type === "rewrite") instruction = "Hãy sửa lại đoạn văn này cho tinh tế và giàu cảm xúc hơn.";
-    else if (type === "continue") instruction = "Hãy viết tiếp đoạn văn này một cách tự nhiên.";
-    else if (type === "full") instruction = "Dựa trên các quy tắc và nhân vật, hãy phát triển tiếp nội dung cho chương này.";
-
-    const selection = window.getSelection().toString();
-    const storyEditor = document.getElementById('story-editor');
-    
-    // Target the currently active tab when invoked
-    const targetPath = state.activeFilePath;
-    const targetTab = state.openTabs.find(t => t.path === targetPath);
-    if (!targetTab) return;
-    
-    // Make sure we have the latest content from the editor before starting
-    let currentContent = storyEditor ? storyEditor.innerText : targetTab.content;
-    targetTab.content = currentContent;
-    state.aiTargetTab = targetTab;
-
-    showStatus("AI đang viết...");
-    
-    if (!selection) {
-        targetTab.content += "\n\n";
-        if (storyEditor && state.activeFilePath === targetPath) {
-            storyEditor.innerText += "\n\n";
-        }
-    }
-
-    try {
-        await invoke('ai_write', {
-            rootPath: state.currentStoryPath,
-            currentFile: targetPath,
-            instruction,
-            currentContent: currentContent,
-            selection: selection || null,
-        });
-    } catch (err) {
-        console.error("AI write failed:", err);
-        alert("Lỗi AI: " + err);
         showStatus("Lỗi AI");
     }
 }
@@ -218,6 +157,3 @@ export function addChatMessage(role, text) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
     return div;
 }
-
-// Map globals
-window.runAiWriting = runAiWriting;

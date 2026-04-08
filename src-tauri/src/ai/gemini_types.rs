@@ -59,17 +59,29 @@ pub struct ThinkingConfig {
     pub thinking_level: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ToolDeclaration {
     #[serde(rename = "functionDeclarations")]
     pub function_declarations: Vec<FunctionDecl>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct FunctionDecl {
     pub name: String,
     pub description: String,
-    pub parameters: serde_json::Value,
+    pub parameters: Schema,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct Schema {
+    #[serde(rename = "type")]
+    pub field_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub properties: Option<std::collections::HashMap<String, Schema>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// Response từ Gemini streaming API
