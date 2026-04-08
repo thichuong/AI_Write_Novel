@@ -1,10 +1,11 @@
 use serde_json;
+use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
 
-/// Khởi tạo cấu trúc thư mục truyện tại root_path
+/// Khởi tạo cấu trúc thư mục truyện tại `root_path`
 #[tauri::command]
-pub fn initialize_story_folders(root_path: String) -> Result<(), String> {
+pub fn initialize_story_folders(root_path: &str) -> Result<(), String> {
     let story_dir = PathBuf::from(&root_path);
 
     if !story_dir.exists() {
@@ -41,7 +42,7 @@ pub fn initialize_story_folders(root_path: String) -> Result<(), String> {
 
 /// Lấy chat history
 #[tauri::command]
-pub fn get_chat_history(root_path: String) -> Result<Vec<serde_json::Value>, String> {
+pub fn get_chat_history(root_path: &str) -> Result<Vec<serde_json::Value>, String> {
     let chat_file = PathBuf::from(&root_path).join(".chat_history.json");
 
     if !chat_file.exists() {
@@ -56,7 +57,7 @@ pub fn get_chat_history(root_path: String) -> Result<Vec<serde_json::Value>, Str
 
 /// Lưu chat history
 #[tauri::command]
-pub fn save_chat_history(root_path: String, history: Vec<serde_json::Value>) -> Result<(), String> {
+pub fn save_chat_history(root_path: &str, history: Vec<serde_json::Value>) -> Result<(), String> {
     let chat_file = PathBuf::from(&root_path).join(".chat_history.json");
     let json = serde_json::to_string_pretty(&history).map_err(|e| e.to_string())?;
     fs::write(&chat_file, json).map_err(|e| e.to_string())
@@ -64,7 +65,7 @@ pub fn save_chat_history(root_path: String, history: Vec<serde_json::Value>) -> 
 
 /// Lấy context (quy tắc, nhân vật, vật phẩm) của truyện bằng cách đọc tất cả file .md
 #[tauri::command]
-pub fn get_story_context(root_path: String) -> Result<String, String> {
+pub fn get_story_context(root_path: &str) -> Result<String, String> {
     let story_dir = PathBuf::from(&root_path);
 
     let mut context = String::from("# KIẾN THỨC VỀ TRUYỆN\n\n");
@@ -84,16 +85,19 @@ pub fn get_story_context(root_path: String) -> Result<String, String> {
                 for entry in entries.flatten() {
                     let path = entry.path();
                     if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
-                        let name = path.file_stem().unwrap().to_string_lossy().to_string();
-                        let content = fs::read_to_string(&path).unwrap_or_default();
-                        if !content.trim().is_empty() {
-                            section_content.push_str(&format!("### {}\n{}\n\n", name, content));
+                        let file_stem = path
+                            .file_stem()
+                            .ok_or_else(|| "Không lấy được tên file".to_string())?;
+                        let name = file_stem.to_string_lossy().to_string();
+                        let file_content = fs::read_to_string(&path).unwrap_or_default();
+                        if !file_content.trim().is_empty() {
+                            let _ = write!(section_content, "### {name}\n{file_content}\n\n");
                         }
                     }
                 }
             }
             if !section_content.is_empty() {
-                context.push_str(&format!("## {}\n{}\n", heading, section_content));
+                let _ = write!(context, "## {heading}\n{section_content}\n");
             }
         }
     }
@@ -103,7 +107,7 @@ pub fn get_story_context(root_path: String) -> Result<String, String> {
 
 /// Lấy nội dung các chương trước chương hiện tại
 #[tauri::command]
-pub fn get_previous_chapters(root_path: String, current_file: String) -> Result<String, String> {
+pub fn get_previous_chapters(root_path: &str, current_file: &str) -> Result<String, String> {
     let chapters_dir = PathBuf::from(&root_path).join("Chương");
 
     if !chapters_dir.exists() {
@@ -115,7 +119,11 @@ pub fn get_previous_chapters(root_path: String, current_file: String) -> Result<
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
-                let name = path.file_name().unwrap().to_string_lossy().to_string();
+                let name = path
+                    .file_name()
+                    .ok_or_else(|| "Không lấy được tên file".to_string())?
+                    .to_string_lossy()
+                    .to_string();
                 let content = fs::read_to_string(&path).unwrap_or_default();
                 chapters.push((name, content));
             }
@@ -141,8 +149,8 @@ pub fn get_previous_chapters(root_path: String, current_file: String) -> Result<
     // Only take the last 10 chapters to avoid overwhelming context
     let start_idx = prev_chaps.len().saturating_sub(10);
     let mut result = String::new();
-    for chap in &prev_chaps[start_idx..] {
-        result.push_str(&format!("## {}\n{}\n\n", chap.0, chap.1));
+    for chap in prev_chaps.iter().skip(start_idx) {
+        let _ = write!(result, "## {}\n{}\n\n", chap.0, chap.1);
     }
 
     Ok(result)

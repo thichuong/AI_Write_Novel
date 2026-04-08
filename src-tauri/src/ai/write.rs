@@ -3,6 +3,7 @@ use super::gemini_types::{
     GeminiContent, GeminiPart, GeminiRequest, GenerationConfig, ThinkingConfig,
 };
 use crate::fs;
+use std::fmt::Write;
 use tauri::AppHandle;
 
 /// AI viết truyện (streaming) — có function calling
@@ -19,20 +20,20 @@ pub async fn ai_write(
     let model = get_model();
 
     // Lấy context
-    let kb_context = fs::get_story_context(root_path.clone())?;
-    let prev_chapters = fs::get_previous_chapters(root_path.clone(), current_file.clone())?;
+    let kb_context = fs::get_story_context(&root_path)?;
+    let prev_chapters = fs::get_previous_chapters(&root_path, &current_file)?;
 
     let mut full_context = kb_context;
     if !prev_chapters.is_empty() {
-        full_context.push_str(&format!(
-            "\n# TÓM TẮT CÁC CHƯƠNG TRƯỚC\n{}\n",
-            prev_chapters
-        ));
+        let _ = write!(
+            full_context,
+            "\n# TÓM TẮT CÁC CHƯƠNG TRƯỚC\n{prev_chapters}\n"
+        );
     }
-    full_context.push_str(&format!(
-        "\n# NỘI DUNG HIỆN TẠI ({})\n{}\n",
-        current_file, current_content
-    ));
+    let _ = write!(
+        full_context,
+        "\n# NỘI DUNG HIỆN TẠI ({current_file})\n{current_content}\n"
+    );
 
     let agent_role = if current_file.starts_with("Chương/") || current_file.starts_with("Chương\\")
     {
@@ -60,24 +61,17 @@ pub async fn ai_write(
     };
 
     let system_prompt = format!(
-        "{}\n\
+        "{agent_role}\n\
          Hãy thực hiện dựa trên các kiến thức và chỉ dẫn dưới đây. \
          Tuyệt đối bám sát các Quy tắc, Nhân vật và thông tin bối cảnh đã cung cấp.\n\n\
-         {}\n",
-        agent_role, full_context
+         {full_context}\n"
     );
 
-    let user_prompt = if let Some(sel) = &selection {
-        format!(
-            "Phần văn bản được chọn: \"{}\"\n\nChỉ dẫn: {}\n\nChỉ trả về nội dung mới, không giải thích.",
-            sel, instruction
-        )
-    } else {
-        format!(
-            "Chỉ dẫn viết tiếp: {}\n\nChỉ trả về nội dung mới, không giải thích.",
-            instruction
-        )
-    };
+    let user_prompt = selection.as_ref().map_or_else(|| format!(
+            "Chỉ dẫn viết tiếp: {instruction}\n\nChỉ trả về nội dung mới, không giải thích."
+        ), |sel| format!(
+            "Phần văn bản được chọn: \"{sel}\"\n\nChỉ dẫn: {instruction}\n\nChỉ trả về nội dung mới, không giải thích."
+        ));
 
     let contents = vec![
         GeminiContent {

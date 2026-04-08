@@ -24,8 +24,7 @@ pub async fn stream_gemini_response(
     event_name: &str,
 ) -> Result<(), String> {
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent?key={}&alt=sse",
-        model, api_key
+        "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?key={api_key}&alt=sse"
     );
 
     let client = Client::new();
@@ -34,19 +33,19 @@ pub async fn stream_gemini_response(
         .json(request)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(format!("API error {}: {}", status, body));
+        return Err(format!("API error {status}: {body}"));
     }
 
     let mut stream = response.bytes_stream();
     let mut buffer = String::new();
 
     while let Some(chunk_result) = stream.next().await {
-        let chunk = chunk_result.map_err(|e| format!("Stream error: {}", e))?;
+        let chunk = chunk_result.map_err(|e| format!("Stream error: {e}"))?;
         let text = String::from_utf8_lossy(&chunk);
         buffer.push_str(&text);
 
@@ -70,7 +69,7 @@ pub async fn stream_gemini_response(
                                             if part.thought.unwrap_or(false) {
                                                 app_handle
                                                     .emit(
-                                                        &format!("{}-thought", event_name),
+                                                        &format!("{event_name}-thought"),
                                                         text.clone(),
                                                     )
                                                     .ok();
@@ -82,7 +81,7 @@ pub async fn stream_gemini_response(
                                             // Emit tool call event
                                             app_handle
                                                 .emit(
-                                                    &format!("{}-tool", event_name),
+                                                    &format!("{event_name}-tool"),
                                                     serde_json::json!({
                                                         "name": fc.name,
                                                         "args": fc.args,
@@ -101,6 +100,6 @@ pub async fn stream_gemini_response(
     }
 
     // Phát sự kiện kết thúc
-    app_handle.emit(&format!("{}-done", event_name), ()).ok();
+    app_handle.emit(&format!("{event_name}-done"), ()).ok();
     Ok(())
 }

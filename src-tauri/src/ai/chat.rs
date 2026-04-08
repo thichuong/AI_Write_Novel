@@ -3,6 +3,7 @@ use super::gemini_types::{
     GeminiContent, GeminiPart, GeminiRequest, GenerationConfig, ThinkingConfig,
 };
 use crate::fs;
+use std::fmt::Write;
 use tauri::AppHandle;
 
 /// Chat với AI (streaming) — dùng cho hỗ trợ sáng tác
@@ -18,20 +19,19 @@ pub async fn ai_chat(
     let model = get_model();
 
     // Lấy context từ file system
-    let kb_context = fs::get_story_context(root_path.clone())?;
-    let prev_chapters = fs::get_previous_chapters(root_path.clone(), current_file)?;
+    let kb_context = fs::get_story_context(&root_path)?;
+    let prev_chapters = fs::get_previous_chapters(&root_path, &current_file)?;
 
     let mut full_context = kb_context;
     if !prev_chapters.is_empty() {
-        full_context.push_str(&format!(
-            "\n# TÓM TẮT CÁC CHƯƠNG TRƯỚC\n{}\n",
-            prev_chapters
-        ));
+        let _ = write!(
+            full_context,
+            "\n# TÓM TẮT CÁC CHƯƠNG TRƯỚC\n{prev_chapters}\n"
+        );
     }
 
     let system_prompt = format!(
-        "Bạn là một trợ lý sáng tác chuyên nghiệp. Hãy sử dụng KIẾN THỨC VỀ TRUYỆN dưới đây để trả lời.\n\n{}\n",
-        full_context
+        "Bạn là một trợ lý sáng tác chuyên nghiệp. Hãy sử dụng KIẾN THỨC VỀ TRUYỆN dưới đây để trả lời.\n\n{full_context}\n"
     );
 
     // Build contents

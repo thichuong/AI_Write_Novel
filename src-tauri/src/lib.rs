@@ -2,6 +2,12 @@ mod ai;
 mod fs;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Runs the Tauri application.
+///
+/// # Panics
+///
+/// Panics if the Tauri application fails to start or run.
+#[allow(clippy::expect_used)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {

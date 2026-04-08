@@ -1,10 +1,12 @@
 # Rust & Tauri Best Practices for AI Novelist
 
-## Code Style (Rust)
+## Code Style & Quality (Rust)
 - Sử dụng `snake_case` cho variables/functions/modules.
 - Sử dụng `PascalCase` cho Structs/Enums.
 - Chạy formatter chuẩn trong Rust.
 - Xử lý lỗi tinh tế qua cấu trúc `Result<T, E>`.
+- **Luôn chạy `cargo check` và `cargo clippy` sau khi sửa đổi code Rust để đảm bảo không có lỗi cú pháp và tuân thủ best practices.**
+- Tuyệt đối không để lại code thừa, unused imports hoặc warnings không cần thiết.
 
 ## Tauri Architecture
 - Tách biệt rõ ràng giao thức: giao diện (Vanilla JS) không gọi API trực tiếp, mà sẽ thông qua `invoke` (hoặc listen tới các events) để backend `Rust` thực hiện.

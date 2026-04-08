@@ -3,8 +3,11 @@ name = "ai-novelist"
 version = "0.1.0"
 description = "AI Novelist IDE - Trợ lý Sáng tác Truyện"
 authors = ["you"]
-license = ""
-repository = ""
+license = "MIT"
+repository = "https://github.com/you/ai-novelist"
+readme = "README.md"
+keywords = ["ai", "novelist", "tauri"]
+categories = ["development-tools"]
 edition = "2021"
 rust-version = "1.77.2"
 
@@ -21,10 +24,23 @@ serde_json = "1.0"
 log = "0.4"
 tauri = { version = "2.10.3", features = [] }
 tauri-plugin-log = "2"
-reqwest = { version = "0.12", features = ["json", "stream"] }
+reqwest = { version = "0.13.2", features = ["json", "stream"] }
 tokio = { version = "1", features = ["full"] }
-dotenvy = "0.15"
+dotenvy = "0.15.7"
 chrono = { version = "0.4", features = ["serde"] }
-walkdir = "2"
+walkdir = "2.5"
 futures-util = "0.3"
-tauri-plugin-dialog = "2.0.0-rc.0"
+tauri-plugin-dialog = "2"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+needless_pass_by_value = "allow"
+multiple_crate_versions = "allow"
