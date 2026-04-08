@@ -1,4 +1,4 @@
 pub mod api_client;
-pub mod commands;
+pub mod chat;
 pub mod gemini_types;
-pub mod tools;
+pub mod write;

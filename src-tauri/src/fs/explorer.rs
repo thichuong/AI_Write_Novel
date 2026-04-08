@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 #[serde(rename_all = "camelCase")]
 pub struct FileNode {
     pub name: String,
-    pub path: String,           // relative path từ root_path
-    pub node_type: String,      // "file" | "folder"
+    pub path: String,      // relative path từ root_path
+    pub node_type: String, // "file" | "folder"
     pub children: Vec<FileNode>,
 }
 
@@ -63,7 +63,11 @@ fn read_dir_one_level(dir: &Path, base: &Path) -> Result<Vec<FileNode>, String> 
             continue;
         }
 
-        let rel_path = path.strip_prefix(base).unwrap().to_string_lossy().to_string();
+        let rel_path = path
+            .strip_prefix(base)
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
         if path.is_dir() {
             nodes.push(FileNode {

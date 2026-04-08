@@ -57,11 +57,7 @@ pub fn create_node(
 
 /// Đổi tên file hoặc folder
 #[tauri::command]
-pub fn rename_node(
-    root_path: String,
-    old_path: String,
-    new_name: String,
-) -> Result<(), String> {
+pub fn rename_node(root_path: String, old_path: String, new_name: String) -> Result<(), String> {
     let old_full = PathBuf::from(&root_path).join(&old_path);
 
     if !old_full.exists() {
@@ -74,10 +70,7 @@ pub fn rename_node(
 
 /// Xóa file hoặc folder (recursive)
 #[tauri::command]
-pub fn delete_node(
-    root_path: String,
-    node_path: String,
-) -> Result<(), String> {
+pub fn delete_node(root_path: String, node_path: String) -> Result<(), String> {
     let full_path = PathBuf::from(&root_path).join(&node_path);
 
     if !full_path.exists() {

@@ -1,7 +1,7 @@
-use reqwest::Client;
-use futures_util::StreamExt;
-use tauri::{AppHandle, Emitter};
 use super::gemini_types::{GeminiRequest, GeminiStreamResponse};
+use futures_util::StreamExt;
+use reqwest::Client;
+use tauri::{AppHandle, Emitter};
 
 /// Lấy API key từ .env
 pub fn get_api_key() -> Result<String, String> {
@@ -55,8 +55,7 @@ pub async fn stream_gemini_response(
             let line = buffer[..pos].trim().to_string();
             buffer = buffer[pos + 1..].to_string();
 
-            if line.starts_with("data: ") {
-                let json_str = &line[6..];
+            if let Some(json_str) = line.strip_prefix("data: ") {
                 if json_str.trim() == "[DONE]" {
                     continue;
                 }
@@ -69,20 +68,27 @@ pub async fn stream_gemini_response(
                                     for part in parts {
                                         if let Some(text) = &part.text {
                                             if part.thought.unwrap_or(false) {
-                                                app_handle.emit(&format!("{}-thought", event_name), text.clone()).ok();
+                                                app_handle
+                                                    .emit(
+                                                        &format!("{}-thought", event_name),
+                                                        text.clone(),
+                                                    )
+                                                    .ok();
                                             } else {
                                                 app_handle.emit(event_name, text.clone()).ok();
                                             }
                                         }
                                         if let Some(fc) = &part.function_call {
                                             // Emit tool call event
-                                            app_handle.emit(
-                                                &format!("{}-tool", event_name),
-                                                serde_json::json!({
-                                                    "name": fc.name,
-                                                    "args": fc.args,
-                                                }),
-                                            ).ok();
+                                            app_handle
+                                                .emit(
+                                                    &format!("{}-tool", event_name),
+                                                    serde_json::json!({
+                                                        "name": fc.name,
+                                                        "args": fc.args,
+                                                    }),
+                                                )
+                                                .ok();
                                         }
                                     }
                                 }

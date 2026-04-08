@@ -1,5 +1,5 @@
-mod fs;
 mod ai;
+mod fs;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -31,8 +31,8 @@ pub fn run() {
             fs::get_story_context,
             fs::get_previous_chapters,
             // AI Agent commands
-            ai::commands::ai_chat,
-            ai::commands::ai_write,
+            ai::chat::ai_chat,
+            ai::write::ai_write,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

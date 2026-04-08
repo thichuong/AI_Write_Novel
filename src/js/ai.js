@@ -53,16 +53,32 @@ export function setupAIListeners() {
     });
 
     listen('ai-write-stream', (event) => {
-        const storyEditor = document.getElementById('story-editor');
-        if (storyEditor) {
-            storyEditor.innerText += event.payload;
-            storyEditor.scrollTop = storyEditor.scrollHeight;
+        if (!state.aiTargetTab) return;
+        state.aiTargetTab.content += event.payload;
+        
+        if (state.activeFilePath === state.aiTargetTab.path) {
+            const storyEditor = document.getElementById('story-editor');
+            if (storyEditor) {
+                storyEditor.innerText += event.payload;
+                storyEditor.scrollTop = storyEditor.scrollHeight;
+            }
         }
     });
 
-    listen('ai-write-stream-done', () => {
+    listen('ai-write-stream-done', async () => {
         showStatus("AI hoàn tất.");
-        saveActiveFile(true);
+        if (state.aiTargetTab) {
+            try {
+                await invoke('write_file', {
+                    rootPath: state.currentStoryPath,
+                    filePath: state.aiTargetTab.path,
+                    content: state.aiTargetTab.content,
+                });
+            } catch (err) {
+                console.error("AI Auto-save failed:", err);
+            }
+            state.aiTargetTab = null;
+        }
     });
 }
 
@@ -88,6 +104,7 @@ export async function sendChat() {
     try {
         await invoke('ai_chat', {
             rootPath: state.currentStoryPath,
+            currentFile: state.activeFilePath || "",
             message: msg,
             chatHistory: state.chatHistory.slice(-10),
         });
@@ -117,17 +134,32 @@ export async function runAiWriting(type) {
 
     const selection = window.getSelection().toString();
     const storyEditor = document.getElementById('story-editor');
-    const content = storyEditor ? storyEditor.innerText : "";
+    
+    // Target the currently active tab when invoked
+    const targetPath = state.activeFilePath;
+    const targetTab = state.openTabs.find(t => t.path === targetPath);
+    if (!targetTab) return;
+    
+    // Make sure we have the latest content from the editor before starting
+    let currentContent = storyEditor ? storyEditor.innerText : targetTab.content;
+    targetTab.content = currentContent;
+    state.aiTargetTab = targetTab;
 
     showStatus("AI đang viết...");
-    if (!selection && storyEditor) storyEditor.innerText += "\n\n";
+    
+    if (!selection) {
+        targetTab.content += "\n\n";
+        if (storyEditor && state.activeFilePath === targetPath) {
+            storyEditor.innerText += "\n\n";
+        }
+    }
 
     try {
         await invoke('ai_write', {
             rootPath: state.currentStoryPath,
-            currentFile: state.activeFilePath,
+            currentFile: targetPath,
             instruction,
-            currentContent: content,
+            currentContent: currentContent,
             selection: selection || null,
         });
     } catch (err) {
