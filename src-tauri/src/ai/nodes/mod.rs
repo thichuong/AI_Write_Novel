@@ -17,6 +17,7 @@ pub struct AgentState {
     pub root_path: String,
     pub api_key: String,
     pub model: String,
+    pub system_instruction: Option<GeminiContent>,
     pub contents: Vec<GeminiContent>,
     pub goal: String,
     pub loop_count: u32,
@@ -49,6 +50,7 @@ pub async fn run_agent_loop(
 
         let request = GeminiRequest {
             contents: state.contents.clone(),
+            system_instruction: state.system_instruction.clone(),
             generation_config: Some(generation_config.clone()),
             tools: Some(tool_decls.clone()),
         };

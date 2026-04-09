@@ -2,8 +2,10 @@ use super::{run_agent_loop, AgentState};
 use crate::ai::gemini_types::{GeminiContent, GeminiPart};
 
 pub async fn execute_step(state: &mut AgentState) -> Result<(), String> {
-    let execute_prompt = "BÂY GIỜ HÃY THỰC HIỆN KẾ HOẠCH. Sử dụng các tool cần thiết (write_file, delete_file, read_file...). \n\
-        Bạn có thể gọi tool liên tục. Khi nào hoàn thành các tác vụ kỹ thuật (cập nhật file, viết chương...), hãy dừng lại và nói 'DONE_EXECUTION'.".to_string();
+    let execute_prompt = "THỰC HIỆN KẾ HOẠCH: Hãy sử dụng các công cụ cần thiết để hoàn thành mục tiêu.\n\
+        - Bạn có thể gọi nhiều công cụ liên tục.\n\
+        - Luôn cập nhật nhân vật/cốt truyện mới vào CẢ file chương và 'memory.md'.\n\
+        - Khi đã hoàn tất các thay đổi file, hãy kết thúc bằng chuỗi 'DONE_EXECUTION'.".to_string();
 
     state.contents.push(GeminiContent {
         role: "user".to_string(),

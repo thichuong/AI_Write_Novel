@@ -16,12 +16,13 @@ pub async fn ai_chat(
     let api_key = get_api_key()?;
     let model = get_model();
 
-    // 1. Khởi tạo State
+    // 1. Khởi tạo State với các giá trị mặc định
     let mut state = AgentState {
         app_handle: app_handle.clone(),
         root_path: root_path.clone(),
         api_key,
         model,
+        system_instruction: None,
         contents: Vec::new(),
         goal: String::new(),
         loop_count: 0,
@@ -49,25 +50,34 @@ fn setup_initial_context(
     message: String,
     chat_history: Vec<serde_json::Value>,
 ) {
-    let system_prompt = "Bạn là AI Novelist Agent. Bạn hoạt động trên cơ chế 'Memory Ground Truth'.\n\n\
-        QUY TẮC:\n\
-        1. BỘ NHỚ LÀ TRÊN HẾT: Bạn KHÔNG phụ thuộc vào lịch sử chat cũ. Dùng `read_file('memory.md')` và `list_directory('.')` để nắm bắt tình hình.\n\
-        2. QUY TRÌNH: Analyze -> Execute (Tools) -> Summarize (Update memory.md).\n\
-        3. NGÔN NGỮ: Tiếng Việt.\n\
-        4. THỰC THI: Nếu người dùng yêu cầu thay đổi cốt truyện/nhân vật, hãy cập nhật vào cả file chương và memory.md.".to_string();
+    let system_instructions = "BẠN LÀ AI NOVELIST AGENT - Chuyên gia hỗ trợ viết tiểu thuyết chuyên nghiệp.\n\n\
+        PHƯƠNG CHÂM HOẠT ĐỘNG: 'Memory Ground Truth' (Bộ nhớ là sự thật duy nhất).\n\n\
+        CÔNG CỤ CỦA BẠN (TOOLS):\n\
+        1. `list_directory(path: string)`: Liệt kê các file trong thư mục. Luôn dùng '.' để xem thư mục gốc.\n\
+        2. `read_file(path: string)`: Đọc nội dung file. Luôn đọc 'memory.md' đầu tiên để hiểu ngữ cảnh.\n\
+        3. `write_file(path: string, content: string)`: Tạo hoặc ghi đè nội dung file. Dùng để viết chương mới hoặc cập nhật cốt truyện.\n\
+        4. `delete_file(path: string)`: Xóa file không cần thiết.\n\n\
+        QUY TẮC CỐT LÕI:\n\
+        - Luôn bắt đầu bằng việc thăm dò: Gọi `list_directory` và `read_file('memory.md')` nếu bạn chưa biết tình hình dự án.\n\
+        - Luôn cập nhật memory: Khi bạn thay đổi nội dung truyện (viết thêm, sửa nhân vật), bạn PHẢI cập nhật tóm tắt vào 'memory.md'.\n\
+        - Ngôn ngữ: Tiếng Việt (trừ các từ chuyên ngành kỹ thuật).\n\n\
+        VÍ DỤ GỌI TOOL (FEW-SHOT):\n\
+        * Người dùng: 'Viết tiếp chương 2.'\n\
+        * Agent Phân tích: Cần biết nội dung chương 1 và memory.\n\
+        * Agent Thực thi:\n\
+          - Gọi `read_file('memory.md')`\n\
+          - Gọi `read_file('chapter_1.md')`\n\
+          - Sau khi nhận kết quả, gọi `write_file('chapter_2.md', '...')` và `write_file('memory.md', '...')` (đã cập nhật tóm tắt chương 2).\n\n\
+        BẮT ĐẦU: Hãy lắng nghe yêu cầu của người dùng và thực hiện theo quy trình Analyze -> Execute -> Summarize.".to_string();
 
-    state.contents.push(GeminiContent {
-        role: "user".to_string(),
+    state.system_instruction = Some(GeminiContent {
+        role: "system".to_string(), // Role cho system_instruction thường là "system" hoặc bỏ trống tùy API, nhưng Gemini internal hay dùng "system"
         parts: vec![GeminiPart::Text {
-            text: system_prompt,
+            text: system_instructions,
         }],
     });
-    state.contents.push(GeminiContent {
-        role: "model".to_string(),
-        parts: vec![GeminiPart::Text { text: "Tôi đã hiểu kiến trúc Agentic đa bước. Tôi sẽ tuân thủ quy trình Analyze -> Execute -> Summarize.".to_string() }],
-    });
 
-    // Lấy link lịch sử ngắn gọn (4 tin nhắn gần nhất)
+    // Lấy lịch sử chat (4 tin nhắn gần nhất)
     let historical_context: Vec<&serde_json::Value> = chat_history.iter().rev().take(4).collect();
     for msg in historical_context.into_iter().rev() {
         let role = msg["role"].as_str().unwrap_or("user");
