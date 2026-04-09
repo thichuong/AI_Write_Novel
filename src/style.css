@@ -636,3 +636,48 @@ sl-tree-item[selected]::part(base) {
     border-radius: 4px;
     display: inline-block;
 }
+
+/* Context Menu */
+#context-menu {
+    position: fixed;
+    z-index: 3000;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    min-width: 180px;
+    overflow: hidden;
+}
+
+#explorer-context-menu {
+    --sl-menu-item-font-size: 0.85rem;
+    background: transparent;
+    border: none;
+}
+
+/* Tab Dirty Indicator */
+.tab .dirty-indicator {
+    width: 6px;
+    height: 6px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+    margin-left: 8px;
+    display: none;
+    box-shadow: 0 0 8px var(--accent-color);
+}
+
+.tab.dirty .dirty-indicator {
+    display: block;
+}
+
+.tab.dirty .tab-close {
+    display: none;
+}
+
+.tab.dirty:hover .tab-close {
+    display: block;
+}
+
+.tab.dirty:hover .dirty-indicator {
+    display: none;
+}

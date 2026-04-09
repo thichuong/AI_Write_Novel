@@ -111,6 +111,17 @@
 
     </div>
 
+    <!-- Context Menu -->
+    <div id="context-menu" class="hidden">
+        <sl-menu id="explorer-context-menu">
+            <sl-menu-item value="new-file"><sl-icon slot="prefix" name="file-earmark-plus"></sl-icon> File mới</sl-menu-item>
+            <sl-menu-item value="new-folder"><sl-icon slot="prefix" name="folder-plus"></sl-icon> Thư mục mới</sl-menu-item>
+            <sl-divider></sl-divider>
+            <sl-menu-item value="rename"><sl-icon slot="prefix" name="pencil"></sl-icon> Đổi tên</sl-menu-item>
+            <sl-menu-item value="delete"><sl-icon slot="prefix" name="trash"></sl-icon> Xóa</sl-menu-item>
+        </sl-menu>
+    </div>
+
     <!-- Modals -->
     <div id="modal-overlay" class="hidden">
         <div class="modal">

@@ -33,9 +33,10 @@ export function renderTabs() {
     tabsList.innerHTML = "";
     state.openTabs.forEach(tab => {
         const tabEl = document.createElement('div');
-        tabEl.className = `tab ${tab.path === state.activeFilePath ? 'active' : ''}`;
+        tabEl.className = `tab ${tab.path === state.activeFilePath ? 'active' : ''} ${tab.dirty ? 'dirty' : ''}`;
         tabEl.innerHTML = `
             <span>${tab.name}</span>
+            <div class="dirty-indicator"></div>
             <i data-lucide="x" class="tab-close" onclick="event.stopPropagation(); window.closeTab('${escapeAttr(tab.path)}')"></i>
         `;
         tabEl.onclick = () => {
@@ -89,6 +90,11 @@ export async function saveActiveFile(silent = false) {
 
     try {
         await fs.writeTextFile(state.activeFilePath, content);
+        
+        // Clear dirty state
+        if (tab) tab.dirty = false;
+        renderTabs();
+
         if (!silent) showStatus("Đã lưu ✓");
         
         const wordCount = document.getElementById('word-count');

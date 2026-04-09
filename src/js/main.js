@@ -65,6 +65,16 @@ function setupEventListeners() {
 
     // Editor Auto-save on input (debounced)
     if (storyEditor) {
+        storyEditor.addEventListener('input', () => {
+            if (state.activeFilePath) {
+                const tab = state.openTabs.find(t => t.path === state.activeFilePath);
+                if (tab && !tab.dirty) {
+                    tab.dirty = true;
+                    import('./editor.js').then(module => module.renderTabs());
+                }
+            }
+        });
+
         storyEditor.addEventListener('input', debounce(() => {
             if (state.activeFilePath) saveActiveFile(true);
         }, 2000));

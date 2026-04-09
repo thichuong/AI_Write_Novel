@@ -11,7 +11,6 @@ export function setupExplorerListeners() {
         }
     });
 
-    // Listen to sl-tree events if needed
     const explorerTree = document.getElementById('explorer-tree');
     if (explorerTree) {
         explorerTree.addEventListener('sl-selection-change', (event) => {
@@ -25,7 +24,59 @@ export function setupExplorerListeners() {
                 openFile(node);
             }
         });
+
+        // Track expansion state
+        explorerTree.addEventListener('sl-expand', (event) => {
+            const path = event.target.dataset.path;
+            if (path) state.expandedPaths.add(path);
+        });
+
+        explorerTree.addEventListener('sl-collapse', (event) => {
+            const path = event.target.dataset.path;
+            if (path) state.expandedPaths.delete(path);
+        });
+
+        // Context Menu
+        explorerTree.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            const treeItem = event.target.closest('sl-tree-item');
+            if (treeItem) {
+                showContextMenu(event.clientX, event.clientY, treeItem.dataset.path, treeItem.dataset.type, treeItem.dataset.name);
+            } else {
+                // Background of tree
+                showContextMenu(event.clientX, event.clientY, state.currentStoryPath, 'folder', 'root');
+            }
+        });
     }
+
+    // Close context menu on click elsewhere
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('context-menu');
+        if (menu) menu.classList.add('hidden');
+    });
+}
+
+function showContextMenu(x, y, path, type, name) {
+    const menu = document.getElementById('context-menu');
+    if (!menu) return;
+
+    menu.style.top = `${y}px`;
+    menu.style.left = `${x}px`;
+    menu.classList.remove('hidden');
+
+    const slMenu = document.getElementById('explorer-context-menu');
+    slMenu.onclick = (event) => {
+        const menuItem = event.target.closest('sl-menu-item');
+        if (!menuItem) return;
+        const action = menuItem.value;
+
+        if (action === 'new-file') showNodeModal(path, 'file');
+        else if (action === 'new-folder') showNodeModal(path, 'folder');
+        else if (action === 'rename') renameNodePrompt(path, name);
+        else if (action === 'delete') deleteNode(path);
+
+        menu.classList.add('hidden');
+    };
 }
 
 export async function handleOpenFolder() {
@@ -154,11 +205,27 @@ function createNodeElement(node) {
     if (node.nodeType === 'folder') {
         treeItem.lazy = true;
         
-        // Load children on expand
-        treeItem.addEventListener('sl-expand', async (event) => {
-            if (treeItem.children.length <= 1) { // Only icon slot exists
+        // Restore expansion state
+        if (state.expandedPaths.has(node.path)) {
+            treeItem.expanded = true;
+            // For lazy items, we need to trigger the load manually if expanding
+            setTimeout(() => treeItem.dispatchEvent(new CustomEvent('sl-lazy-load')), 0);
+        }
+
+        // Load children on lazy load
+        treeItem.addEventListener('sl-lazy-load', async (event) => {
+            if (treeItem.lazy) { 
+                treeItem.loading = true; // Ensure loading state is visible if not already
                 try {
                     const children = await fs.readDir(node.path);
+                    
+                    // Stop loading if empty
+                    if (children.length === 0) {
+                        treeItem.lazy = false;
+                        treeItem.loading = false;
+                        return;
+                    }
+
                     const childNodes = await Promise.all(children.map(async (entry) => {
                         const entryPath = entry.path || await path.join(node.path, entry.name);
                         return {
@@ -177,8 +244,14 @@ function createNodeElement(node) {
                     childNodes.forEach(child => {
                         treeItem.appendChild(createNodeElement(child));
                     });
+                    
+                    treeItem.lazy = false;
+                    treeItem.expanded = true;
                 } catch (err) {
                     console.error("Failed to load sub-folder:", err);
+                    treeItem.lazy = false;
+                } finally {
+                    treeItem.loading = false;
                 }
             }
         });
