@@ -4,108 +4,119 @@ import { showStatus } from './utils.js';
 
 export function setupAIListeners() {
     listen('ai-agent-step', (event) => {
-        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
-        if (aiMsgDiv) {
-            let stepBadge = aiMsgDiv.querySelector('.agent-step-badge');
-            if (!stepBadge) {
-                stepBadge = document.createElement('div');
-                stepBadge.className = 'agent-step-badge';
-                aiMsgDiv.prepend(stepBadge);
-            }
-            
-            const phaseMap = {
-                'analyze': '🔍 Phân tích ngữ cảnh...',
-                'execute': '⚙️ Đang thực thi yêu cầu...',
-                'summarize': '📝 Tổng hợp & Cập nhật bộ nhớ...'
-            };
-            stepBadge.innerText = phaseMap[event.payload] || event.payload;
-            
-            // Nếu chuyển phase, xóa tool status cũ
-            const toolBox = aiMsgDiv.querySelector('.tool-status-box');
-            if (toolBox) toolBox.remove();
+        const phase = event.payload;
+        getOrCreatePhaseContainer(phase);
+    });
+
+    listen('ai-chat-stream-thought', (event) => {
+        const { text, phase } = event.payload;
+        const container = getOrCreatePhaseContainer(phase);
+        let thoughtBox = container.querySelector('.thinking-box');
+        if (!thoughtBox) {
+            thoughtBox = document.createElement('div');
+            thoughtBox.className = 'thinking-box';
+            container.appendChild(thoughtBox);
         }
+        thoughtBox.innerText += text;
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    listen('ai-chat-stream', (event) => {
+        const { text, phase } = event.payload;
+        const container = getOrCreatePhaseContainer(phase);
+        let answerBox = container.querySelector('.answer-box');
+        if (!answerBox) {
+            answerBox = document.createElement('div');
+            answerBox.className = 'answer-box';
+            container.appendChild(answerBox);
+        }
+        answerBox.innerText += text;
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    listen('ai-chat-stream-done', async (event) => {
+        const { phase } = event.payload;
+        console.log(`Phase ${phase} done.`);
+        
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Chỉ xử lý kết thúc toàn bộ nếu phase là 'summarize'
+        if (phase === 'summarize') {
+            const aiMsgDiv = document.querySelector('.message.assistant.streaming');
+            if (aiMsgDiv) {
+                aiMsgDiv.classList.remove('streaming');
+                const allAnswerBoxes = aiMsgDiv.querySelectorAll('.answer-box');
+                let finalText = "";
+                allAnswerBoxes.forEach(box => finalText += box.innerText + "\n");
+                
+                state.chatHistory.push({ role: "assistant", content: finalText.trim() });
+                await saveChatHistory();
+            }
+            showStatus("Ready");
+        }
+    });
+
+    listen('ai-chat-stream-tool', (event) => {
+        const { name, args, phase } = event.payload;
+        const container = getOrCreatePhaseContainer(phase);
+        
+        let toolBox = container.querySelector('.tool-status-box');
+        if (!toolBox) {
+            toolBox = document.createElement('div');
+            toolBox.className = 'tool-status-box';
+            container.appendChild(toolBox);
+        }
+        
+        let statusText = "";
+        if (name === "read_file") statusText = `🔍 Đang đọc: ${args.path}`;
+        else if (name === "write_file") statusText = `📝 Đang ghi: ${args.path}`;
+        else if (name === "list_directory") statusText = `📂 Đang xem thư mục: ${args.path}`;
+        else if (name === "delete_file") statusText = `🗑️ Đang xóa: ${args.path}`;
+        else statusText = `⚙️ Đang dùng: ${name}`;
+
+        toolBox.innerText = `[${statusText}]`;
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
     listen('ai-chat-stream-tool-done', () => {
         const aiMsgDiv = document.querySelector('.message.assistant.streaming');
         if (aiMsgDiv) {
-            let toolBox = aiMsgDiv.querySelector('.tool-status-box');
-            if (toolBox) {
-                toolBox.innerText = toolBox.innerText.replace('🔍', '✅');
-                toolBox.innerText += " - Đang chờ AI phản hồi...";
+            const toolBoxes = aiMsgDiv.querySelectorAll('.tool-status-box');
+            if (toolBoxes.length > 0) {
+                const lastToolBox = toolBoxes[toolBoxes.length - 1];
+                lastToolBox.innerText = lastToolBox.innerText.replace('🔍', '✅').replace('📝', '✅').replace('📂', '✅').replace('🗑️', '✅');
             }
         }
     });
+}
 
-    listen('ai-chat-stream-thought', (event) => {
-        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
-        if (aiMsgDiv) {
-            let thoughtBox = aiMsgDiv.querySelector('.thinking-box');
-            if (!thoughtBox) {
-                thoughtBox = document.createElement('div');
-                thoughtBox.className = 'thinking-box';
-                aiMsgDiv.insertBefore(thoughtBox, aiMsgDiv.firstChild);
-            }
-            thoughtBox.innerText += event.payload;
-            const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-    });
+function getOrCreatePhaseContainer(phase) {
+    const aiMsgDiv = document.querySelector('.message.assistant.streaming');
+    if (!aiMsgDiv) return null;
 
-    listen('ai-chat-stream', (event) => {
-        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
-        if (aiMsgDiv) {
-            let answerBox = aiMsgDiv.querySelector('.answer-box');
-            if (!answerBox) {
-                answerBox = document.createElement('div');
-                answerBox.className = 'answer-box';
-                aiMsgDiv.appendChild(answerBox);
-            }
-            answerBox.innerText += event.payload;
-            const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-    });
-
-    listen('ai-chat-stream-done', async () => {
-        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
-        if (aiMsgDiv) {
-            aiMsgDiv.classList.remove('streaming');
-            let thoughtBox = aiMsgDiv.querySelector('.thinking-box');
-            if (thoughtBox) {
-                thoughtBox.style.display = 'none';
-            }
-            let answerBox = aiMsgDiv.querySelector('.answer-box');
-            const finalText = answerBox ? answerBox.innerText : aiMsgDiv.innerText;
-            state.chatHistory.push({ role: "assistant", content: finalText });
-            await saveChatHistory();
-        }
-        showStatus("Ready");
-    });
-
-    listen('ai-chat-stream-tool', (event) => {
-        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
-        if (aiMsgDiv) {
-            const { name, args } = event.payload;
-            let toolBox = aiMsgDiv.querySelector('.tool-status-box');
-            if (!toolBox) {
-                toolBox = document.createElement('div');
-                toolBox.className = 'tool-status-box';
-                aiMsgDiv.appendChild(toolBox);
-            }
-            
-            let statusText = "";
-            if (name === "read_file") statusText = `🔍 Đang đọc: ${args.path}`;
-            else if (name === "write_file") statusText = `📝 Đang ghi: ${args.path}`;
-            else if (name === "list_directory") statusText = `📂 Đang xem thư mục: ${args.path}`;
-            else if (name === "delete_file") statusText = `🗑️ Đang xóa: ${args.path}`;
-            else statusText = `⚙️ Đang dùng: ${name}`;
-
-            toolBox.innerText = `[${statusText}]`;
-            const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-    });
+    let container = aiMsgDiv.querySelector(`.phase-container[data-phase="${phase}"]`);
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'phase-container';
+        container.setAttribute('data-phase', phase);
+        
+        const badge = document.createElement('div');
+        badge.className = 'agent-step-badge';
+        const phaseMap = {
+            'analyze': '🔍 Phân tích ngữ cảnh',
+            'execute': '⚙️ Đang thực thi',
+            'summarize': '📝 Tổng hợp & Ghi nhớ'
+        };
+        badge.innerText = phaseMap[phase] || phase;
+        
+        container.appendChild(badge);
+        aiMsgDiv.appendChild(container);
+    }
+    return container;
 }
 
 export async function sendChat() {

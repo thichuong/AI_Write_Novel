@@ -28,7 +28,7 @@ pub struct AgentState {
 pub async fn run_agent_loop(
     state: &mut AgentState,
     max_local_loops: u32,
-    _phase: &str,
+    phase: &str,
 ) -> Result<(), String> {
     let tool_decls = tools::get_tool_declarations();
     let generation_config = GenerationConfig {
@@ -63,6 +63,7 @@ pub async fn run_agent_loop(
             &state.model,
             &request,
             streaming_event,
+            phase,
         )
         .await?;
 

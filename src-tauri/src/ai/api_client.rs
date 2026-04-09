@@ -22,6 +22,7 @@ pub async fn stream_gemini_response(
     model: &str,
     request: &GeminiRequest,
     event_name: &str,
+    phase: &str,
 ) -> Result<Vec<super::gemini_types::GeminiPart>, String> {
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?key={api_key}&alt=sse"
@@ -67,20 +68,24 @@ pub async fn stream_gemini_response(
                                 if let Some(parts) = &content.parts {
                                     for part in parts {
                                         if let Some(text) = &part.text {
-                                            // Stream text to UI
+                                            // Stream text to UI with phase context
                                             if part.thought.unwrap_or(false) {
                                                 app_handle
                                                     .emit(
                                                         &format!("{event_name}-thought"),
-                                                        text.clone(),
+                                                        serde_json::json!({ "text": text, "phase": phase }),
                                                     )
                                                     .ok();
                                             } else {
-                                                app_handle.emit(event_name, text.clone()).ok();
+                                                app_handle
+                                                    .emit(
+                                                        event_name,
+                                                        serde_json::json!({ "text": text, "phase": phase }),
+                                                    )
+                                                    .ok();
                                             }
 
                                             // Accumulate text parts
-                                            // Nếu part trước đó cũng là text, hãy gộp lại (hoặc để nguyên tùy logic, nhưng Gemini API yêu cầu gộp text liên tiếp)
                                             if let Some(super::gemini_types::GeminiPart::Text {
                                                 text: last_text,
                                             }) = accumulated_parts.last_mut()
@@ -103,6 +108,7 @@ pub async fn stream_gemini_response(
                                                     serde_json::json!({
                                                         "name": fc.name,
                                                         "args": fc.args,
+                                                        "phase": phase,
                                                     }),
                                                 )
                                                 .ok();
@@ -125,6 +131,6 @@ pub async fn stream_gemini_response(
     }
 
     // Phát sự kiện kết thúc
-    app_handle.emit(&format!("{event_name}-done"), ()).ok();
+    app_handle.emit(&format!("{event_name}-done"), serde_json::json!({ "phase": phase })).ok();
     Ok(accumulated_parts)
 }

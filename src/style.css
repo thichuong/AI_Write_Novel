@@ -586,35 +586,53 @@ sl-tree-item[selected]::part(base) {
     font-size: 0.85rem;
     font-style: italic;
     color: var(--text-dim);
-    border-left: 3px solid var(--border-color);
-    padding-left: 10px;
-    margin-bottom: 10px;
-    white-space: pre-wrap;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
+    border-left: 2px solid var(--accent-color);
     padding: 8px 12px;
+    margin: 8px 0;
+    white-space: pre-wrap;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    line-height: 1.6;
 }
 
 .answer-box {
     white-space: pre-wrap;
+    margin-top: 5px;
+    font-size: 0.95rem;
+}
+
+.phase-container {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.phase-container:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
 }
 
 .agent-step-badge {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    color: var(--accent-color);
-    background: rgba(99, 102, 241, 0.1);
-    padding: 4px 10px;
-    border-radius: 12px;
-    margin-bottom: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-accent);
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
     display: inline-block;
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    border: 1px solid var(--border-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
 }
 
 .tool-status-box {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-top: 8px;
-    font-family: monospace;
-    opacity: 0.8;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin: 5px 0;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
 }
