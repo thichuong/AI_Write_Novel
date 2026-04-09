@@ -1,15 +1,16 @@
 use crate::ai::gemini_types::{FunctionDecl, Schema, ToolDeclaration};
-use std::fs;
-use std::path::PathBuf;
 use serde_json::json;
 use std::collections::HashMap;
+use std::fmt::Write;
+use std::fs;
+use std::path::PathBuf;
 use tauri::{AppHandle, Emitter};
 
 /// Danh sách các file trong thư mục
 pub fn tool_list_directory(root_path: &str, path: &str) -> Result<String, String> {
     let target_dir = PathBuf::from(root_path).join(path);
     if !target_dir.exists() {
-        return Err(format!("Thư mục không tồn tại: {}", path));
+        return Err(format!("Thư mục không tồn tại: {path}"));
     }
 
     let mut result = String::new();
@@ -18,29 +19,33 @@ pub fn tool_list_directory(root_path: &str, path: &str) -> Result<String, String
     let mut files_and_folders = Vec::new();
     for entry in entries.flatten() {
         let p = entry.path();
-        let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
-        if name.starts_with('.') { continue; }
-        
-        let rel_path = p.strip_prefix(root_path)
-            .map(|dp| dp.to_string_lossy().to_string())
-            .unwrap_or_else(|_| name.clone());
-            
+        let name = p
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        if name.starts_with('.') {
+            continue;
+        }
+
+        let rel_path = p
+            .strip_prefix(root_path)
+            .map_or_else(|_| name.clone(), |dp| dp.to_string_lossy().to_string());
+
         let is_dir = p.is_dir();
         files_and_folders.push((name, rel_path, is_dir));
     }
 
     // Sort: folders first, then alphabetically
-    files_and_folders.sort_by(|a, b| {
-        match (a.2, b.2) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.0.cmp(&b.0),
-        }
+    files_and_folders.sort_by(|a, b| match (a.2, b.2) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.0.cmp(&b.0),
     });
 
     for (name, rel_path, is_dir) in files_and_folders {
         let icon = if is_dir { "📁" } else { "📄" };
-        result.push_str(&format!("{} {} ({})\n", icon, name, rel_path));
+        let _ = writeln!(result, "{icon} {name} ({rel_path})");
     }
 
     if result.is_empty() {
@@ -64,20 +69,20 @@ pub fn tool_write_file(
     content: &str,
 ) -> Result<String, String> {
     let full_path = PathBuf::from(root_path).join(path);
-    
+
     // Đảm bảo thư mục cha tồn tại
     if let Some(parent) = full_path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    
+
     fs::write(&full_path, content).map_err(|e| e.to_string())?;
-    
+
     // Emit event để frontend đồng bộ file explorer
     let _ = app_handle.emit(
         "file-system-changed",
         json!({ "path": path, "action": "write" }),
     );
-    Ok(format!("Đã ghi thành công vào file: {}", path))
+    Ok(format!("Đã ghi thành công vào file: {path}"))
 }
 
 /// Xóa một file hoặc thư mục
@@ -88,9 +93,9 @@ pub fn tool_delete_file(
 ) -> Result<String, String> {
     let full_path = PathBuf::from(root_path).join(path);
     if !full_path.exists() {
-        return Ok(format!("Không tìm thấy file để xóa: {}", path));
+        return Ok(format!("Không tìm thấy file để xóa: {path}"));
     }
-    
+
     if full_path.is_dir() {
         fs::remove_dir_all(full_path).map_err(|e| e.to_string())?;
     } else {
@@ -102,7 +107,7 @@ pub fn tool_delete_file(
         "file-system-changed",
         json!({ "path": path, "action": "delete" }),
     );
-    Ok(format!("Đã xóa thành công: {}", path))
+    Ok(format!("Đã xóa thành công: {path}"))
 }
 
 /// Trả về khai báo các công cụ cho Gemini

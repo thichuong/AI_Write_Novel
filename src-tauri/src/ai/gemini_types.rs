@@ -79,7 +79,7 @@ pub struct Schema {
     #[serde(rename = "type")]
     pub field_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub properties: Option<std::collections::HashMap<String, Schema>>,
+    pub properties: Option<std::collections::HashMap<String, Self>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,5 +1,4 @@
 use serde_json;
-use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
 
@@ -75,5 +74,3 @@ pub fn save_chat_history(root_path: &str, history: Vec<serde_json::Value>) -> Re
     let json = serde_json::to_string_pretty(&history).map_err(|e| e.to_string())?;
     fs::write(&chat_file, json).map_err(|e| e.to_string())
 }
-
-

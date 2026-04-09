@@ -24,9 +24,7 @@ pub async fn ai_chat(
         model,
         system_instruction: None,
         contents: Vec::new(),
-        goal: String::new(),
         loop_count: 0,
-        finished: false,
     };
 
     // 2. Setup System Prompt & History

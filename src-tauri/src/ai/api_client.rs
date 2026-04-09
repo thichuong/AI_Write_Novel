@@ -131,6 +131,11 @@ pub async fn stream_gemini_response(
     }
 
     // Phát sự kiện kết thúc
-    app_handle.emit(&format!("{event_name}-done"), serde_json::json!({ "phase": phase })).ok();
+    app_handle
+        .emit(
+            &format!("{event_name}-done"),
+            serde_json::json!({ "phase": phase }),
+        )
+        .ok();
     Ok(accumulated_parts)
 }

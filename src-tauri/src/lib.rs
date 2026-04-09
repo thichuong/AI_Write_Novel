@@ -9,6 +9,7 @@ mod fs;
 /// Panics if the Tauri application fails to start or run.
 #[allow(clippy::expect_used)]
 pub fn run() {
+    #[allow(clippy::large_stack_frames)]
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {

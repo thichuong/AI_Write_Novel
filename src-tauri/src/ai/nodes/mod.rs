@@ -19,9 +19,7 @@ pub struct AgentState {
     pub model: String,
     pub system_instruction: Option<GeminiContent>,
     pub contents: Vec<GeminiContent>,
-    pub goal: String,
     pub loop_count: u32,
-    pub finished: bool,
 }
 
 /// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút
@@ -78,7 +76,7 @@ pub async fn run_agent_loop(
         for part in &parts {
             match part {
                 GeminiPart::FunctionCall { function_call } => {
-                    function_calls.push(function_call.clone())
+                    function_calls.push(function_call.clone());
                 }
                 GeminiPart::Text { text } => {
                     if text.contains("DONE_EXECUTION") || text.contains("Mục tiêu đã hoàn thành")
@@ -86,7 +84,7 @@ pub async fn run_agent_loop(
                         has_text_done = true;
                     }
                 }
-                _ => {}
+                GeminiPart::FunctionResponse { .. } => {}
             }
         }
 
