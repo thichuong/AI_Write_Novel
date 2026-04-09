@@ -60,9 +60,48 @@ function setupEventListeners() {
     if (clearChatBtn) clearChatBtn.onclick = clearChat;
 
     const chatInput = document.getElementById('chat-input');
+    const toggleEnterBtn = document.getElementById('toggle-enter-btn');
+    const footerInfo = document.querySelector('.chat-footer-info');
+    
+    let enterSends = localStorage.getItem('chat_enter_mode') !== 'newline';
+    
+    const updateEnterUI = () => {
+        if (!toggleEnterBtn || !footerInfo) return;
+        if (enterSends) {
+            toggleEnterBtn.classList.remove('active');
+            footerInfo.innerText = "Enter để gửi, Shift + Enter để xuống dòng";
+            toggleEnterBtn.title = "Chế độ: Enter để gửi (Nhấn để đổi)";
+        } else {
+            toggleEnterBtn.classList.add('active');
+            footerInfo.innerText = "Shift + Enter để gửi, Enter để xuống dòng";
+            toggleEnterBtn.title = "Chế độ: Enter để xuống dòng (Nhấn để đổi)";
+        }
+    };
+    
+    if (toggleEnterBtn) {
+        updateEnterUI();
+        toggleEnterBtn.onclick = () => {
+            enterSends = !enterSends;
+            localStorage.setItem('chat_enter_mode', enterSends ? 'send' : 'newline');
+            updateEnterUI();
+        };
+    }
+
     if (chatInput) {
         chatInput.onkeydown = (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+            if (e.key === 'Enter') {
+                if (enterSends) {
+                    if (!e.shiftKey) {
+                        e.preventDefault();
+                        sendChat();
+                    }
+                } else {
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        sendChat();
+                    }
+                }
+            }
         };
     }
 

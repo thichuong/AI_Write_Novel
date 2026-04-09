@@ -58,10 +58,6 @@
                 <div class="sidebar-header">
                     <span id="story-title-display">EXPLORER</span>
                     <div class="sidebar-actions">
-                        <button id="new-file-btn" title="Tạo tệp mới"><i data-lucide="file-plus"></i></button>
-                        <button id="new-folder-btn" title="Tạo thư mục mới"><i data-lucide="folder-plus"></i></button>
-                        <button id="rename-node-btn" title="Đổi tên"><i data-lucide="edit-3"></i></button>
-                        <button id="delete-node-btn" title="Xóa"><i data-lucide="trash-2"></i></button>
                         <button id="refresh-explorer" title="Làm mới"><i data-lucide="rotate-cw"></i></button>
                     </div>
                 </div>
@@ -110,9 +106,19 @@
             <div id="chat-messages">
                 <!-- Messages -->
             </div>
-            <div class="chat-input-wrapper">
-                <textarea id="chat-input" placeholder="Hỏi AI về cốt truyện, nhân vật..."></textarea>
-                <button id="send-chat-btn"><i data-lucide="send"></i></button>
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <textarea id="chat-input" placeholder="Hỏi AI về cốt truyện, nhân vật..." rows="1"></textarea>
+                    <button id="send-chat-btn" title="Gửi tin nhắn">
+                        <i data-lucide="send"></i>
+                    </button>
+                </div>
+                <div class="chat-input-footer">
+                    <button id="toggle-enter-btn" class="chat-footer-button" title="Đổi chế độ phím Enter">
+                        <i data-lucide="keyboard"></i>
+                        <span class="chat-footer-info">Enter để gửi, Shift + Enter để xuống dòng</span>
+                    </button>
+                </div>
             </div>
         </aside>
 
