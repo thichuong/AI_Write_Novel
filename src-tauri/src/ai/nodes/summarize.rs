@@ -3,8 +3,8 @@ use crate::ai::gemini_types::{GeminiContent, GeminiPart};
 
 pub async fn summarize_step(state: &mut AgentState) -> Result<(), String> {
     let summarize_prompt =
-        "CUỐI CÙNG: Hãy cập nhật lại `memory.md` để ghi nhận các diễn biến mới nhất.\n\
-        Sau đó, hãy tóm tắt những gì bạn đã làm và trả lời người dùng một cách chuyên nghiệp."
+        "BƯỚC TỔNG HỢP: Hãy tổng hợp lại toàn bộ những hành động và thay đổi bạn đã thực hiện trong phiên này. \
+        Đây là bước chuẩn bị để cập nhật vào memory.md ở bước sau."
             .to_string();
 
     state.contents.push(GeminiContent {
@@ -14,6 +14,6 @@ pub async fn summarize_step(state: &mut AgentState) -> Result<(), String> {
         }],
     });
 
-    run_agent_loop(state, 3, "summarize").await?;
+    run_agent_loop(state, 2, "summarize").await?;
     Ok(())
 }

@@ -15,6 +15,13 @@ export function setupAIListeners() {
         if (!thoughtBox) {
             thoughtBox = document.createElement('div');
             thoughtBox.className = 'thinking-box';
+            thoughtBox.onclick = () => {
+                if (thoughtBox.classList.contains('collapsed')) {
+                    thoughtBox.classList.remove('collapsed');
+                } else {
+                    thoughtBox.classList.add('collapsed');
+                }
+            };
             container.appendChild(thoughtBox);
         }
         thoughtBox.innerText += text;
@@ -43,8 +50,17 @@ export function setupAIListeners() {
         const chatMessages = document.getElementById('chat-messages');
         if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // Chỉ xử lý kết thúc toàn bộ nếu phase là 'summarize'
-        if (phase === 'summarize') {
+        // Tự động thu gọn phần suy nghĩ khi phase hoàn tất
+        const container = document.querySelector(`.phase-container[data-phase="${phase}"]`);
+        if (container) {
+            const thoughtBox = container.querySelector('.thinking-box');
+            if (thoughtBox) {
+                thoughtBox.classList.add('collapsed');
+            }
+        }
+
+        // Chỉ xử lý kết thúc toàn bộ nếu phase là 'complete'
+        if (phase === 'complete') {
             const aiMsgDiv = document.querySelector('.message.assistant.streaming');
             if (aiMsgDiv) {
                 aiMsgDiv.classList.remove('streaming');
@@ -109,7 +125,9 @@ function getOrCreatePhaseContainer(phase) {
         const phaseMap = {
             'analyze': '🔍 Phân tích ngữ cảnh',
             'execute': '⚙️ Đang thực thi',
-            'summarize': '📝 Tổng hợp & Ghi nhớ'
+            'summarize': '📝 Tổng hợp diễn biến',
+            'memory': '💾 Cập nhật Memory',
+            'complete': '✅ Hoàn tất & Phản hồi'
         };
         badge.innerText = phaseMap[phase] || phase;
         

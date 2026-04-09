@@ -605,6 +605,36 @@ sl-tree-item[selected]::part(base) {
     background: rgba(0, 0, 0, 0.15);
     border-radius: 4px;
     line-height: 1.6;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, padding 0.3s;
+    max-height: 1000px; /* Large enough to show full content by default */
+    position: relative;
+}
+
+.thinking-box.collapsed {
+    max-height: 42px; /* Approx 1.5 lines */
+    cursor: pointer;
+    padding-bottom: 4px;
+}
+
+.thinking-box.collapsed::after {
+    content: "Click to expand...";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(transparent, rgba(15, 20, 25, 0.9));
+    color: var(--accent-color);
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.thinking-box:hover.collapsed {
+    background: rgba(99, 102, 241, 0.1);
 }
 
 .answer-box {

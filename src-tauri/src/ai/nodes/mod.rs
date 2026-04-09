@@ -10,6 +10,8 @@ use tauri::{AppHandle, Emitter};
 pub mod analyze;
 pub mod execute;
 pub mod summarize;
+pub mod memory;
+pub mod complete;
 
 /// Trạng thái của Agent trong quá trình xử lý đa bước
 pub struct AgentState {

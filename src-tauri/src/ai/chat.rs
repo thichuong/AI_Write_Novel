@@ -1,7 +1,8 @@
 use super::api_client::{get_api_key, get_model};
 use super::gemini_types::{GeminiContent, GeminiPart};
 use super::nodes::{
-    analyze::analyze_step, execute::execute_step, summarize::summarize_step, AgentState,
+    analyze::analyze_step, complete::complete_step, execute::execute_step, memory::memory_step,
+    summarize::summarize_step, AgentState,
 };
 use tauri::{AppHandle, Emitter};
 
@@ -41,6 +42,12 @@ pub async fn ai_chat(
 
     app_handle.emit("ai-agent-step", "summarize").ok();
     summarize_step(&mut state).await?;
+
+    app_handle.emit("ai-agent-step", "memory").ok();
+    memory_step(&mut state).await?;
+
+    app_handle.emit("ai-agent-step", "complete").ok();
+    complete_step(&mut state).await?;
 
     Ok(())
 }
