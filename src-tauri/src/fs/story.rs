@@ -24,19 +24,6 @@ pub fn initialize_story_folders(root_path: &str) -> Result<(), String> {
         fs::create_dir_all(story_dir.join(folder)).map_err(|e| e.to_string())?;
     }
 
-    // Tạo file chương đầu tiên nếu chưa có gì trong chapters/
-    let chapter_dir = story_dir.join("chapters");
-    if chapter_dir.exists() {
-        let entries = fs::read_dir(&chapter_dir).map_err(|e| e.to_string())?;
-        if entries.filter_map(std::result::Result::ok).count() == 0 {
-            fs::write(
-                chapter_dir.join("Chapter 1.md"),
-                "# Chapter 1\n\nBắt đầu viết tại đây...",
-            )
-            .map_err(|e| e.to_string())?;
-        }
-    }
-
     // Tạo chat history rỗng nếu chưa có
     let chat_file = story_dir.join(".chat_history.json");
     if !chat_file.exists() {

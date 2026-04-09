@@ -184,7 +184,9 @@ pub fn get_tool_declarations() -> Vec<ToolDeclaration> {
 fn decl_list_directory() -> FunctionDecl {
     FunctionDecl {
         name: "list_directory".to_string(),
-        description: "Liệt kê danh sách file và thư mục trong một đường dẫn cụ thể (tương đối so với root).".to_string(),
+        description:
+            "Liệt kê danh sách file và thư mục trong một đường dẫn cụ thể (tương đối so với root)."
+                .to_string(),
         parameters: Schema {
             field_type: "object".to_string(),
             properties: Some({
@@ -213,13 +215,18 @@ fn decl_read_file() -> FunctionDecl {
             field_type: "object".to_string(),
             properties: Some({
                 let mut p = HashMap::new();
-                p.insert("path".to_string(), Schema {
-                    field_type: "string".to_string(),
-                    description: Some("Đường dẫn đến file cần đọc (ví dụ: 'Chương/Chuong1.md').".to_string()),
-                    properties: None,
-                    items: None,
-                    required: None,
-                });
+                p.insert(
+                    "path".to_string(),
+                    Schema {
+                        field_type: "string".to_string(),
+                        description: Some(
+                            "Đường dẫn đến file cần đọc (ví dụ: 'Chương/Chuong1.md').".to_string(),
+                        ),
+                        properties: None,
+                        items: None,
+                        required: None,
+                    },
+                );
                 p
             }),
             items: None,
@@ -232,25 +239,36 @@ fn decl_read_file() -> FunctionDecl {
 fn decl_write_file() -> FunctionDecl {
     FunctionDecl {
         name: "write_file".to_string(),
-        description: "Tạo mới hoặc ghi đè nội dung vào một file. Chuyên dùng để lưu chương truyện.".to_string(),
+        description: "Tạo mới hoặc ghi đè nội dung vào một file. Chuyên dùng để lưu chương truyện."
+            .to_string(),
         parameters: Schema {
             field_type: "object".to_string(),
             properties: Some({
                 let mut p = HashMap::new();
-                p.insert("path".to_string(), Schema {
-                    field_type: "string".to_string(),
-                    description: Some("Đường dẫn file (ví dụ: 'Chương/Chuong2.md').".to_string()),
-                    properties: None,
-                    items: None,
-                    required: None,
-                });
-                p.insert("content".to_string(), Schema {
-                    field_type: "string".to_string(),
-                    description: Some("Toàn bộ nội dung văn bản muốn ghi vào file.".to_string()),
-                    properties: None,
-                    items: None,
-                    required: None,
-                });
+                p.insert(
+                    "path".to_string(),
+                    Schema {
+                        field_type: "string".to_string(),
+                        description: Some(
+                            "Đường dẫn file (ví dụ: 'Chương/Chuong2.md').".to_string(),
+                        ),
+                        properties: None,
+                        items: None,
+                        required: None,
+                    },
+                );
+                p.insert(
+                    "content".to_string(),
+                    Schema {
+                        field_type: "string".to_string(),
+                        description: Some(
+                            "Toàn bộ nội dung văn bản muốn ghi vào file.".to_string(),
+                        ),
+                        properties: None,
+                        items: None,
+                        required: None,
+                    },
+                );
                 p
             }),
             items: None,
@@ -268,13 +286,16 @@ fn decl_delete_file() -> FunctionDecl {
             field_type: "object".to_string(),
             properties: Some({
                 let mut p = HashMap::new();
-                p.insert("path".to_string(), Schema {
-                    field_type: "string".to_string(),
-                    description: Some("Đường dẫn file hoặc thư mục cần xóa.".to_string()),
-                    properties: None,
-                    items: None,
-                    required: None,
-                });
+                p.insert(
+                    "path".to_string(),
+                    Schema {
+                        field_type: "string".to_string(),
+                        description: Some("Đường dẫn file hoặc thư mục cần xóa.".to_string()),
+                        properties: None,
+                        items: None,
+                        required: None,
+                    },
+                );
                 p
             }),
             items: None,
@@ -287,7 +308,8 @@ fn decl_delete_file() -> FunctionDecl {
 fn decl_wiki_list_entities() -> FunctionDecl {
     FunctionDecl {
         name: "wiki_list_entities".to_string(),
-        description: "Liệt kê toàn bộ các thực thể kiến thức đang có trong Wiki (.wiki/).".to_string(),
+        description: "Liệt kê toàn bộ các thực thể kiến thức đang có trong Wiki (.wiki/)."
+            .to_string(),
         parameters: Schema {
             field_type: "object".to_string(),
             properties: Some(HashMap::new()),

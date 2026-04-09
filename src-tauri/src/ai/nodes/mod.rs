@@ -8,10 +8,10 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter};
 
 pub mod analyze;
-pub mod execute;
-pub mod summarize;
-pub mod memory;
 pub mod complete;
+pub mod execute;
+pub mod memory;
+pub mod summarize;
 
 /// Trạng thái của Agent trong quá trình xử lý đa bước
 pub struct AgentState {
@@ -93,7 +93,9 @@ pub async fn run_agent_loop(
     Ok(())
 }
 
-fn process_model_parts(parts: &[GeminiPart]) -> (Vec<crate::ai::gemini_types::FunctionCallData>, bool) {
+fn process_model_parts(
+    parts: &[GeminiPart],
+) -> (Vec<crate::ai::gemini_types::FunctionCallData>, bool) {
     let mut function_calls = Vec::new();
     let mut has_text_done = false;
 
@@ -103,7 +105,8 @@ fn process_model_parts(parts: &[GeminiPart]) -> (Vec<crate::ai::gemini_types::Fu
                 function_calls.push(function_call.clone());
             }
             GeminiPart::Text { text } => {
-                if text.contains("DONE_EXECUTION") || text.contains("Mục tiêu đã hoàn thành") {
+                if text.contains("DONE_EXECUTION") || text.contains("Mục tiêu đã hoàn thành")
+                {
                     has_text_done = true;
                 }
             }
