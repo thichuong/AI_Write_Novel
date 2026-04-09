@@ -2,13 +2,14 @@ import { state } from './state.js';
 import { debounce } from './utils.js';
 import { setupAIListeners, sendChat, clearChat } from './ai.js';
 import { handleCreateStory, handleOpenFolder, openStory, loadNodes, setupExplorerListeners, handleNewFile, handleNewFolder, handleRename, handleDeleteBtn } from './fileExplorer.js';
-import { saveActiveFile } from './editor.js';
+import { saveActiveFile, setupEditorListeners } from './editor.js';
 import { invoke, fs, path } from './services/tauri.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     setupAIListeners();
     setupExplorerListeners();
+    setupEditorListeners();
     
     // Load last opened folder
     const lastPath = localStorage.getItem('last_story_path');

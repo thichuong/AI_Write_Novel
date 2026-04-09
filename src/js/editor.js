@@ -1,10 +1,31 @@
 import { state } from './state.js';
-import { invoke, fs } from './services/tauri.js';
+import { invoke, fs, listen, path } from './services/tauri.js';
 import { escapeAttr, showStatus } from './utils.js';
-import { renderExplorer } from './fileExplorer.js';
 
-export async function openFile(node) {
+export async function openFile(input) {
+    console.log("openFile called with:", input);
     try {
+        let node;
+        if (typeof input === 'string') {
+            // If input is a path string, normalize it
+            let fullPath = input;
+            if (state.currentStoryPath && !input.startsWith('/') && !input.includes(':')) {
+                // Use absolute path join for reliable file reading
+                try {
+                    fullPath = await path.join(state.currentStoryPath, input);
+                } catch (e) {
+                    console.warn("Path join failed, falling back to simple join:", e);
+                    const sep = state.currentStoryPath.includes('\\') ? '\\' : '/';
+                    fullPath = state.currentStoryPath + (state.currentStoryPath.endsWith(sep) ? '' : sep) + input;
+                }
+            }
+            
+            const name = input.split(/[/\\]/).pop();
+            node = { path: fullPath, name: name };
+        } else {
+            node = input;
+        }
+
         let content = await fs.readTextFile(node.path);
 
         // Special handling for chat history JSON
@@ -117,6 +138,18 @@ export async function saveActiveFile(silent = false) {
         console.error("Save failed:", err);
         showStatus("Lưu thất bại!");
     }
+}
+
+export function setupEditorListeners() {
+    console.log("Setting up editor listeners...");
+    listen('open-file', (event) => {
+        console.log("Received open-file event:", event);
+        const { path: filePath } = event.payload;
+        if (filePath) {
+            console.log("Triggering openFile for:", filePath);
+            openFile(filePath);
+        }
+    });
 }
 
 // Attach globals for inline HTML event handlers

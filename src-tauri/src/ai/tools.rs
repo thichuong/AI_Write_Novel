@@ -77,10 +77,14 @@ pub fn tool_write_file(
 
     fs::write(&full_path, content).map_err(|e| e.to_string())?;
 
-    // Emit event để frontend đồng bộ file explorer
+    // Emit event để frontend đồng bộ file explorer và tự động mở file
     let _ = app_handle.emit(
         "file-system-changed",
         json!({ "path": path, "action": "write" }),
+    );
+    let _ = app_handle.emit(
+        "open-file",
+        json!({ "path": path }),
     );
     Ok(format!("Đã ghi thành công vào file: {path}"))
 }
