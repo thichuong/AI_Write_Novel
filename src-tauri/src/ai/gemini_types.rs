@@ -81,6 +81,8 @@ pub struct Schema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub properties: Option<std::collections::HashMap<String, Self>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub items: Option<Box<Self>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,

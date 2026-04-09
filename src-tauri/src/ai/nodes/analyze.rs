@@ -3,9 +3,11 @@ use crate::ai::gemini_types::{GeminiContent, GeminiPart};
 
 pub async fn analyze_step(state: &mut AgentState) -> Result<(), String> {
     let analyze_prompt =
-        "PHÂN TÍCH YÊU CẦU: Hãy xác định mục tiêu cụ thể bạn cần đạt được.\n\
-        1. Gọi `list_directory('.')` và `read_file('memory.md')` nếu cần ngữ cảnh.\n\
-        2. Sau đó, viết một đoạn ngắn trình bày: 'Mục tiêu' và 'Kế hoạch các bước' bạn sẽ thực hiện."
+        "PHÂN TÍCH VÀ NẠP KIẾN THỨC:\n\
+        1. Gọi `list_directory('.')` để nắm cấu trúc.\n\
+        2. Gọi `read_file('memory.md')` để hiểu bối cảnh dự án.\n\
+        3. Nếu cần thông tin nhân vật/thế giới, gọi `wiki_list_entities()`.\n\
+        4. Sau đó, lập kế hoạch chi tiết để giải quyết yêu cầu của người dùng dựa trên tri thức đã nạp."
             .to_string();
 
     state.contents.push(GeminiContent {

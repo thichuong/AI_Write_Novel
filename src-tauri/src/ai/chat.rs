@@ -5,6 +5,8 @@ use super::nodes::{
 };
 use tauri::{AppHandle, Emitter};
 
+use super::instructions::{AGENT_INSTRUCTIONS, WIKI_GRAPH_RULES};
+
 #[tauri::command]
 pub async fn ai_chat(
     app_handle: AppHandle,
@@ -48,25 +50,12 @@ fn setup_initial_context(
     message: String,
     chat_history: Vec<serde_json::Value>,
 ) {
-    let system_instructions = "BẠN LÀ AI NOVELIST AGENT - Chuyên gia hỗ trợ viết tiểu thuyết chuyên nghiệp.\n\n\
-        PHƯƠNG CHÂM HOẠT ĐỘNG: 'Memory Ground Truth' (Bộ nhớ là sự thật duy nhất).\n\n\
-        CÔNG CỤ CỦA BẠN (TOOLS):\n\
-        1. `list_directory(path: string)`: Liệt kê các file trong thư mục. Luôn dùng '.' để xem thư mục gốc.\n\
-        2. `read_file(path: string)`: Đọc nội dung file. Luôn đọc 'memory.md' đầu tiên để hiểu ngữ cảnh.\n\
-        3. `write_file(path: string, content: string)`: Tạo hoặc ghi đè nội dung file. Dùng để viết chương mới hoặc cập nhật cốt truyện.\n\
-        4. `delete_file(path: string)`: Xóa file không cần thiết.\n\n\
-        QUY TẮC CỐT LÕI:\n\
-        - Luôn bắt đầu bằng việc thăm dò: Gọi `list_directory` và `read_file('memory.md')` nếu bạn chưa biết tình hình dự án.\n\
-        - Luôn cập nhật memory: Khi bạn thay đổi nội dung truyện (viết thêm, sửa nhân vật), bạn PHẢI cập nhật tóm tắt vào 'memory.md'.\n\
-        - Ngôn ngữ: Tiếng Việt (trừ các từ chuyên ngành kỹ thuật).\n\n\
-        VÍ DỤ GỌI TOOL (FEW-SHOT):\n\
-        * Người dùng: 'Viết tiếp chương 2.'\n\
-        * Agent Phân tích: Cần biết nội dung chương 1 và memory.\n\
-        * Agent Thực thi:\n\
-          - Gọi `read_file('memory.md')`\n\
-          - Gọi `read_file('chapter_1.md')`\n\
-          - Sau khi nhận kết quả, gọi `write_file('chapter_2.md', '...')` và `write_file('memory.md', '...')` (đã cập nhật tóm tắt chương 2).\n\n\
-        BẮT ĐẦU: Hãy lắng nghe yêu cầu của người dùng và thực hiện theo quy trình Analyze -> Execute -> Summarize.".to_string();
+    let system_instructions = format!(
+        "BẠN LÀ AI NOVELIST AGENT - Phiên bản nâng cấp Wiki Graph.\n\n\
+        {AGENT_INSTRUCTIONS}\n\n\
+        {WIKI_GRAPH_RULES}\n\n\
+        Hành động của bạn phải luôn bắt đầu bằng việc PHÂN TÍCH và KHÁM PHÁ trước khi viết."
+    );
 
     state.system_instruction = Some(GeminiContent {
         role: "system".to_string(), // Role cho system_instruction thường là "system" hoặc bỏ trống tùy API, nhưng Gemini internal hay dùng "system"

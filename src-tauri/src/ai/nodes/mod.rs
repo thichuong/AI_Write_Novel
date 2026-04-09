@@ -23,6 +23,7 @@ pub struct AgentState {
 }
 
 /// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút
+/// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút
 pub async fn run_agent_loop(
     state: &mut AgentState,
     max_local_loops: u32,
@@ -53,14 +54,13 @@ pub async fn run_agent_loop(
             tools: Some(tool_decls.clone()),
         };
 
-        // Stream kết quả về frontend (luôn dùng tên chung ai-chat-stream)
-        let streaming_event = "ai-chat-stream";
+        // Stream kết quả về frontend
         let parts = stream_gemini_response(
             &state.app_handle,
             &state.api_key,
             &state.model,
             &request,
-            streaming_event,
+            "ai-chat-stream",
             phase,
         )
         .await?;
@@ -70,73 +70,107 @@ pub async fn run_agent_loop(
             parts: parts.clone(),
         });
 
-        let mut function_calls = Vec::new();
-        let mut has_text_done = false;
-
-        for part in &parts {
-            match part {
-                GeminiPart::FunctionCall { function_call } => {
-                    function_calls.push(function_call.clone());
-                }
-                GeminiPart::Text { text } => {
-                    if text.contains("DONE_EXECUTION") || text.contains("Mục tiêu đã hoàn thành")
-                    {
-                        has_text_done = true;
-                    }
-                }
-                GeminiPart::FunctionResponse { .. } => {}
-            }
-        }
+        let (function_calls, has_text_done) = process_model_parts(&parts);
 
         if function_calls.is_empty() || has_text_done {
             break;
         }
 
         // Xử lý Tool Calls
-        let mut response_parts = Vec::new();
-        for fc in function_calls {
-            let tool_result = match fc.name.as_str() {
-                "list_directory" => {
-                    let path = fc.args["path"].as_str().unwrap_or(".");
-                    tools::tool_list_directory(&state.root_path, path)
-                }
-                "read_file" => {
-                    let path = fc.args["path"].as_str().unwrap_or("");
-                    tools::tool_read_file(&state.root_path, path)
-                }
-                "write_file" => {
-                    let path = fc.args["path"].as_str().unwrap_or("");
-                    let content = fc.args["content"].as_str().unwrap_or("");
-                    tools::tool_write_file(&state.app_handle, &state.root_path, path, content)
-                }
-                "delete_file" => {
-                    let path = fc.args["path"].as_str().unwrap_or("");
-                    tools::tool_delete_file(&state.app_handle, &state.root_path, path)
-                }
-                _ => Err(format!("Công cụ không tồn tại: {}", fc.name)),
-            };
-
-            let response_json = match tool_result {
-                Ok(res) => json!({ "result": res }),
-                Err(err) => json!({ "error": err }),
-            };
-
-            response_parts.push(GeminiPart::FunctionResponse {
-                function_response: FunctionResponseData {
-                    name: fc.name.clone(),
-                    response: response_json,
-                },
-            });
-        }
+        let response_parts = execute_tool_calls(state, function_calls);
 
         state.contents.push(GeminiContent {
             role: "function".to_string(),
             parts: response_parts,
         });
 
-        // Thông báo cho UI là đã xử lý xong Tool, đang chờ AI phản hồi tiếp
+        // Thông báo cho UI là đã xử lý xong Tool
         state.app_handle.emit("ai-chat-stream-tool-done", ()).ok();
     }
 
     Ok(())
+}
+
+fn process_model_parts(parts: &[GeminiPart]) -> (Vec<crate::ai::gemini_types::FunctionCallData>, bool) {
+    let mut function_calls = Vec::new();
+    let mut has_text_done = false;
+
+    for part in parts {
+        match part {
+            GeminiPart::FunctionCall { function_call } => {
+                function_calls.push(function_call.clone());
+            }
+            GeminiPart::Text { text } => {
+                if text.contains("DONE_EXECUTION") || text.contains("Mục tiêu đã hoàn thành") {
+                    has_text_done = true;
+                }
+            }
+            GeminiPart::FunctionResponse { .. } => {}
+        }
+    }
+    (function_calls, has_text_done)
+}
+
+fn execute_tool_calls(
+    state: &AgentState,
+    function_calls: Vec<crate::ai::gemini_types::FunctionCallData>,
+) -> Vec<GeminiPart> {
+    let mut response_parts = Vec::new();
+    for fc in function_calls {
+        let tool_result = match fc.name.as_str() {
+            "list_directory" => {
+                let path = fc.args["path"].as_str().unwrap_or(".");
+                tools::tool_list_directory(&state.root_path, path)
+            }
+            "read_file" => {
+                let path = fc.args["path"].as_str().unwrap_or("");
+                tools::tool_read_file(&state.root_path, path)
+            }
+            "write_file" => {
+                let path = fc.args["path"].as_str().unwrap_or("");
+                let content = fc.args["content"].as_str().unwrap_or("");
+                tools::tool_write_file(&state.app_handle, &state.root_path, path, content)
+            }
+            "delete_file" => {
+                let path = fc.args["path"].as_str().unwrap_or("");
+                tools::tool_delete_file(&state.app_handle, &state.root_path, path)
+            }
+            "wiki_list_entities" => tools::tool_wiki_list_entities(&state.root_path),
+            "wiki_upsert_entity" => {
+                let entity_type = fc.args["entity_type"].as_str().unwrap_or("Others");
+                let name = fc.args["name"].as_str().unwrap_or("Unnamed");
+                let content = fc.args["content"].as_str().unwrap_or("");
+                let tags = fc.args["tags"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .map(|v| v.as_str().unwrap_or_default().to_string())
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                tools::tool_wiki_upsert_entity(
+                    &state.app_handle,
+                    &state.root_path,
+                    entity_type,
+                    name,
+                    content,
+                    tags,
+                )
+            }
+            _ => Err(format!("Công cụ không tồn tại: {}", fc.name)),
+        };
+
+        let response_json = match tool_result {
+            Ok(res) => json!({ "result": res }),
+            Err(err) => json!({ "error": err }),
+        };
+
+        response_parts.push(GeminiPart::FunctionResponse {
+            function_response: FunctionResponseData {
+                name: fc.name.clone(),
+                response: response_json,
+            },
+        });
+    }
+    response_parts
 }

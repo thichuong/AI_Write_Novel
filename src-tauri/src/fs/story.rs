@@ -1,4 +1,4 @@
-use serde_json;
+use crate::ai::memory::DEFAULT_MEMORY_CONTENT;
 use std::fs;
 use std::path::PathBuf;
 
@@ -11,20 +11,27 @@ pub fn initialize_story_folders(root_path: &str) -> Result<(), String> {
         fs::create_dir_all(&story_dir).map_err(|e| e.to_string())?;
     }
 
-    // Tạo các thư mục con mặc định
-    let default_folders = ["Chương", "Nhân vật", "Cốt truyện", "Bối cảnh", "Ghi chú"];
+    // Tạo các thư mục con mặc định (Tiếng Anh + Hệ thống Wiki)
+    let default_folders = [
+        "chapters",
+        ".wiki",
+        ".wiki/Characters",
+        ".wiki/World",
+        ".wiki/Lore",
+        ".wiki/Plot",
+    ];
     for folder in &default_folders {
         fs::create_dir_all(story_dir.join(folder)).map_err(|e| e.to_string())?;
     }
 
-    // Tạo file chương đầu tiên nếu chưa có gì trong Chương/
-    let chapter_dir = story_dir.join("Chương");
+    // Tạo file chương đầu tiên nếu chưa có gì trong chapters/
+    let chapter_dir = story_dir.join("chapters");
     if chapter_dir.exists() {
         let entries = fs::read_dir(&chapter_dir).map_err(|e| e.to_string())?;
-        if entries.count() == 0 {
+        if entries.filter_map(std::result::Result::ok).count() == 0 {
             fs::write(
-                chapter_dir.join("Chương 1.md"),
-                "# Chương 1\n\nBắt đầu viết tại đây...",
+                chapter_dir.join("Chapter 1.md"),
+                "# Chapter 1\n\nBắt đầu viết tại đây...",
             )
             .map_err(|e| e.to_string())?;
         }
@@ -36,17 +43,10 @@ pub fn initialize_story_folders(root_path: &str) -> Result<(), String> {
         fs::write(&chat_file, "[]").map_err(|e| e.to_string())?;
     }
 
-    // Tạo file memory.md rỗng nếu chưa có
+    // Tạo file memory.md từ Template nếu chưa có
     let memory_file = story_dir.join("memory.md");
     if !memory_file.exists() {
-        fs::write(
-            &memory_file,
-            "# BỘ NHỚ TRUYỆN (MEMORY)\n\n\
-             ## Cốt truyện chung\n(Chưa có nội dung)\n\n\
-             ## Tóm tắt nội dung đã viết\n(Chưa có nội dung)\n\n\
-             ## Tình trạng nhân vật hiện tại\n(Chưa có nội dung)\n",
-        )
-        .map_err(|e| e.to_string())?;
+        fs::write(&memory_file, DEFAULT_MEMORY_CONTENT).map_err(|e| e.to_string())?;
     }
 
     Ok(())
