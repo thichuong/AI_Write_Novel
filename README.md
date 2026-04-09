@@ -11,6 +11,16 @@ Chào mừng bạn đến với **AI_Write_Novel**, một ứng dụng Desktop h
 - **Quản lý Truyện theo Thư mục**: Truyện và các chương truyện được lưu trữ và kết xuất trực tiếp dưới dạng tệp thư mục/file gốc, thay cho SQLite, giúp kiểm soát dễ dàng.
 - **Tauri Desktop App**: Giao diện Desktop nhẹ nhàng nhưng vô cùng mạnh mẽ trong quản lý dữ liệu nhờ tốc độ của Rust Backend.
 - **Streaming Response**: Hiển thị phản hồi từ AI ngay lập tức dưới dạng stream, có hỗ trợ xem luồng "suy nghĩ" (Thinking blocks) của Gemini.
+- **Wiki Graph Knowledge Base**: Tích hợp hệ thống quản lý kiến thức truyện thông minh trong thư mục `.wiki/`.
+
+---
+
+## 🏗️ Kiến trúc Hệ thống
+
+Xem chi tiết tại [architecture.md](architecture.md). Ứng dụng tuân thủ mô hình Layered Architecture:
+- **Frontend**: Vanilla JS (UI logic)
+- **Bridge**: Tauri (Commands/Events)
+- **Backend**: Rust (Agentic Core & FS Management)
 
 ---
 
@@ -57,9 +67,10 @@ Khóa API và các thiết lập mô hình có thể được thiết lập qua 
 
 - `src-tauri/`: Chứa mã nguồn cho Core Rust và Tauri Configuration.
   - `src/ai/`: Cấu trúc request đa Agent, cấu hình Gemini API (`api_client`, `gemini_types`, `tools`).
-  - `src/fs_manager.rs`: (hoặc nhánh fs structure) chuyên xử lý file/thư mục cứng của máy.
+  - `src/fs/`: Xử lý file/thư mục cứng của máy (Stories, Chapters).
 - `src/`: Giao diện ứng dụng cung cấp cho WebView (index.html, JS, CSS).
-- `.agents/`: Các quy định về hành vi tạo sinh code dành cho hệ thống AI Development (mô hình nội bộ).
+- `.agents/`: Các quy định và kỹ năng dành cho hệ thống AI Development (mô hình nội bộ).
+- `.wiki/`: Hệ thống kiến thức nhân vật, thế giới, cốt truyện.
 
 ---
 
@@ -67,8 +78,10 @@ Khóa API và các thiết lập mô hình có thể được thiết lập qua 
 
 Dự án này sử dụng mô hình Agentic để tối ưu hóa khả năng sáng tác và phát triển của AI phụ tá:
 - **Rules**: `.agents/rules/` chứa các tiêu chuẩn Code.
-- **Workflows**: `.agents/workflows/` định nghĩa các quy trình làm việc/thao tác cho công việc sinh truyện.
-- **Skills**: `.agents/skills/` lưu trữ các kỹ năng cốt lõi.
+- **Workflows**: `.agents/workflows/` định nghĩa các quy trình làm việc cho việc viết truyện.
+- **Skills**: `.agents/skills/` lưu trữ các kỹ năng cốt lõi:
+  - [Cập nhật Tools & UI Interaction](.agents/skills/tools_ui_interaction.md)
+  - [Quản lý Wiki Graph](.agents/skills/wiki_graph_agent.md)
 
 ---
 
