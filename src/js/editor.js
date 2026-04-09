@@ -5,7 +5,17 @@ import { renderExplorer } from './fileExplorer.js';
 
 export async function openFile(node) {
     try {
-        const content = await fs.readTextFile(node.path);
+        let content = await fs.readTextFile(node.path);
+
+        // Special handling for chat history JSON
+        if (node.name === 'chat_history.json') {
+            try {
+                const json = JSON.parse(content);
+                content = JSON.stringify(json, null, 2);
+            } catch (e) {
+                console.warn("Failed to parse chat history JSON:", e);
+            }
+        }
 
         const tab = { name: node.name, path: node.path, content };
 
@@ -19,6 +29,12 @@ export async function openFile(node) {
         state.activeFilePath = node.path;
         renderTabs();
         loadEditorContent(tab);
+        
+        // Disable editing for system files
+        const storyEditor = document.getElementById('story-editor');
+        if (storyEditor) {
+            storyEditor.contentEditable = node.name.startsWith('.') ? "false" : "true";
+        }
     } catch (err) {
         console.error("Failed to open file:", err);
         alert("Không thể mở file: " + err);

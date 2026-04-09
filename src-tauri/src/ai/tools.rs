@@ -128,9 +128,9 @@ pub fn tool_wiki_list_entities(root_path: &str) -> Result<String, String> {
         Ok(())
     }
 
-    let wiki_dir = PathBuf::from(root_path).join(".wiki");
+    let wiki_dir = PathBuf::from(root_path).join("wiki");
     if !wiki_dir.exists() {
-        return Ok("Chưa có dữ liệu Wiki. Thư mục .wiki chưa tồn tại.".to_string());
+        return Ok("Chưa có dữ liệu Wiki. Thư mục wiki chưa tồn tại.".to_string());
     }
 
     let mut result = String::from("--- DANH SÁCH THỰC THỂ WIKI ---\n");
@@ -155,7 +155,7 @@ pub fn tool_wiki_upsert_entity(
         _ => "Others",
     };
 
-    let rel_path = format!(".wiki/{folder}/{name}.md");
+    let rel_path = format!("wiki/{folder}/{name}.md");
 
     // Tạo nội dung với Frontmatter
     let mut file_content = String::from("---\n");
@@ -308,7 +308,7 @@ fn decl_delete_file() -> FunctionDecl {
 fn decl_wiki_list_entities() -> FunctionDecl {
     FunctionDecl {
         name: "wiki_list_entities".to_string(),
-        description: "Liệt kê toàn bộ các thực thể kiến thức đang có trong Wiki (.wiki/)."
+        description: "Liệt kê toàn bộ các thực thể kiến thức đang có trong Wiki (wiki/)."
             .to_string(),
         parameters: Schema {
             field_type: "object".to_string(),

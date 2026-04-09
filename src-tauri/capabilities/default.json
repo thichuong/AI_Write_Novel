@@ -11,11 +11,49 @@
     "core:path:default",
     "dialog:default",
     "fs:default",
-    "fs:allow-read-text-file",
-    "fs:allow-write-text-file",
-    "fs:allow-read",
-    "fs:allow-read-dir",
-    "fs:allow-write",
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$DESKTOP/**/chat_history.json" },
+        { "path": "$DESKTOP/**/wiki/**" },
+        { "path": "$HOME/**/chat_history.json" },
+        { "path": "$HOME/**/wiki/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$DESKTOP/**/chat_history.json" },
+        { "path": "$DESKTOP/**/wiki/**" },
+        { "path": "$HOME/**/chat_history.json" },
+        { "path": "$HOME/**/wiki/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read",
+      "allow": [
+        { "path": "$DESKTOP/**/chat_history.json" },
+        { "path": "$DESKTOP/**/wiki/**" },
+        { "path": "$HOME/**/chat_history.json" },
+        { "path": "$HOME/**/wiki/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [
+        { "path": "$DESKTOP/**/wiki/**" },
+        { "path": "$HOME/**/wiki/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write",
+      "allow": [
+        { "path": "$DESKTOP/**/chat_history.json" },
+        { "path": "$DESKTOP/**/wiki/**" },
+        { "path": "$HOME/**/chat_history.json" },
+        { "path": "$HOME/**/wiki/**" }
+      ]
+    },
     "fs:allow-mkdir",
     "fs:allow-remove",
     "fs:allow-rename",

@@ -253,7 +253,13 @@ function createNodeElement(node) {
     // Set icons
     const customIcon = document.createElement('sl-icon');
     customIcon.slot = 'icon';
-    customIcon.name = node.nodeType === 'folder' ? 'folder' : 'file-earmark-text';
+    if (node.name === 'wiki' && node.nodeType === 'folder') {
+        customIcon.name = 'book';
+    } else if (node.name === 'chat_history.json' && node.nodeType === 'file') {
+        customIcon.name = 'clock-history';
+    } else {
+        customIcon.name = node.nodeType === 'folder' ? 'folder' : 'file-earmark-text';
+    }
     treeItem.appendChild(customIcon);
 
     if (node.nodeType === 'folder') {

@@ -237,6 +237,21 @@ sl-tree-item[selected]::part(base) {
     color: var(--text-dim);
 }
 
+/* System Files Styling */
+sl-tree-item[data-name="wiki"] {
+    --sl-color-neutral-700: var(--accent-color);
+    font-style: italic;
+    opacity: 0.9;
+}
+
+sl-tree-item[data-name="chat_history.json"] sl-icon {
+    color: #fca5a5; /* Light red for history */
+}
+
+sl-tree-item[data-name="wiki"] sl-icon {
+    color: #818cf8; /* Light blue for wiki */
+}
+
 .node-actions {
     display: none;
     position: absolute;

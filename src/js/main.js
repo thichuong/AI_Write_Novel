@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function setupEventListeners() {
     // Activity Bar
-    const navItems = ['explorer', 'search', 'story-settings', 'profile'];
+    const navItems = ['explorer', 'search', 'story-settings', 'wiki', 'profile'];
     navItems.forEach(id => {
         const el = document.getElementById(`nav-${id}`);
         if (el) el.onclick = () => switchActivity(id);
@@ -105,6 +105,24 @@ function switchActivity(activity) {
     document.querySelectorAll('.activity-icon').forEach(el => el.classList.remove('active'));
     const target = document.getElementById(`nav-${activity}`);
     if (target) target.classList.add('active');
+
+    // Special logic for Wiki shortcut
+    if (activity === 'wiki') {
+        const explorerTree = document.getElementById('explorer-tree');
+        if (explorerTree) {
+            const wikiItem = Array.from(explorerTree.querySelectorAll('sl-tree-item')).find(item => item.dataset.name === 'wiki');
+            if (wikiItem) {
+                wikiItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                wikiItem.expanded = true;
+                // Highlight or select it
+                wikiItem.selected = true;
+            }
+        }
+        // Ensure UI stays on explorer (since we only have one sidebar area)
+        document.querySelectorAll('.activity-icon').forEach(el => el.classList.remove('active'));
+        document.getElementById('nav-explorer').classList.add('active');
+        document.getElementById('nav-wiki').classList.add('active');
+    }
 }
 
 // Map showModal to window so fileExplorer/others can call it
