@@ -15,13 +15,23 @@ export function setupExplorerListeners() {
     if (explorerTree) {
         explorerTree.addEventListener('sl-selection-change', (event) => {
             const selectedItem = event.detail.selection[0];
-            if (selectedItem && selectedItem.dataset.type === 'file') {
-                const node = {
-                    path: selectedItem.dataset.path,
-                    name: selectedItem.dataset.name,
-                    nodeType: 'file'
-                };
-                openFile(node);
+            if (selectedItem) {
+                state.selectedNodePath = selectedItem.dataset.path;
+                state.selectedNodeType = selectedItem.dataset.type;
+                state.selectedNodeName = selectedItem.dataset.name;
+                
+                if (state.selectedNodeType === 'file') {
+                    const node = {
+                        path: state.selectedNodePath,
+                        name: state.selectedNodeName,
+                        nodeType: 'file'
+                    };
+                    openFile(node);
+                }
+            } else {
+                state.selectedNodePath = null;
+                state.selectedNodeType = null;
+                state.selectedNodeName = null;
             }
         });
 
@@ -41,6 +51,12 @@ export function setupExplorerListeners() {
             event.preventDefault();
             const treeItem = event.target.closest('sl-tree-item');
             if (treeItem) {
+                // Select on right-click so header buttons work on this item
+                treeItem.selected = true;
+                state.selectedNodePath = treeItem.dataset.path;
+                state.selectedNodeType = treeItem.dataset.type;
+                state.selectedNodeName = treeItem.dataset.name;
+                
                 showContextMenu(event.clientX, event.clientY, treeItem.dataset.path, treeItem.dataset.type, treeItem.dataset.name);
             } else {
                 // Background of tree
@@ -93,6 +109,44 @@ export async function handleOpenFolder() {
     } catch (err) {
         console.error("Failed to open dialog:", err);
         alert("Lỗi: " + err);
+    }
+}
+
+export async function handleNewFile() {
+    if (!state.currentStoryPath) return;
+    let parentPath = state.currentStoryPath;
+    if (state.selectedNodePath) {
+        parentPath = state.selectedNodeType === 'folder' ? state.selectedNodePath : await path.dirname(state.selectedNodePath);
+    } else if (state.activeFilePath) {
+        parentPath = await path.dirname(state.activeFilePath);
+    }
+    showNodeModal(parentPath, 'file');
+}
+
+export async function handleNewFolder() {
+    if (!state.currentStoryPath) return;
+    let parentPath = state.currentStoryPath;
+    if (state.selectedNodePath) {
+        parentPath = state.selectedNodeType === 'folder' ? state.selectedNodePath : await path.dirname(state.selectedNodePath);
+    } else if (state.activeFilePath) {
+        parentPath = await path.dirname(state.activeFilePath);
+    }
+    showNodeModal(parentPath, 'folder');
+}
+
+export function handleRename() {
+    if (state.selectedNodePath) {
+        renameNodePrompt(state.selectedNodePath, state.selectedNodeName);
+    } else {
+        alert("Vui lòng chọn một tệp hoặc thư mục để đổi tên.");
+    }
+}
+
+export function handleDeleteBtn() {
+    if (state.selectedNodePath) {
+        deleteNode(state.selectedNodePath);
+    } else {
+        alert("Vui lòng chọn một tệp hoặc thư mục để xóa.");
     }
 }
 
@@ -211,6 +265,19 @@ function createNodeElement(node) {
             // For lazy items, we need to trigger the load manually if expanding
             setTimeout(() => treeItem.dispatchEvent(new CustomEvent('sl-lazy-load')), 0);
         }
+
+        // Toggle expansion on click (not just on the arrow)
+        treeItem.addEventListener('click', (event) => {
+            // Only toggle if the click is on this item itself, not on a nested item
+            if (event.target.closest('sl-tree-item') !== treeItem) return;
+
+            const path = event.composedPath();
+            const isExpandButton = path.some(el => el instanceof HTMLElement && el.getAttribute('part') === 'expand-button');
+            
+            if (!isExpandButton) {
+                treeItem.expanded = !treeItem.expanded;
+            }
+        });
 
         // Load children on lazy load
         treeItem.addEventListener('sl-lazy-load', async (event) => {

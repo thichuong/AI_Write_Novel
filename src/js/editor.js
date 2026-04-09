@@ -19,7 +19,6 @@ export async function openFile(node) {
         state.activeFilePath = node.path;
         renderTabs();
         loadEditorContent(tab);
-        renderExplorer();
     } catch (err) {
         console.error("Failed to open file:", err);
         alert("Không thể mở file: " + err);
@@ -43,7 +42,6 @@ export function renderTabs() {
             state.activeFilePath = tab.path;
             renderTabs();
             loadEditorContent(tab);
-            renderExplorer();
         };
         tabsList.appendChild(tabEl);
     });

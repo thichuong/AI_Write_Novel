@@ -7,4 +7,7 @@ export const state = {
     chatHistory: [],
     isSaving: false,
     expandedPaths: new Set(), // Set of paths that are expanded in the tree
+    selectedNodePath: null,
+    selectedNodeType: null,
+    selectedNodeName: null,
 };

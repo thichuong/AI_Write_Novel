@@ -1,9 +1,9 @@
 import { state } from './state.js';
 import { debounce } from './utils.js';
 import { setupAIListeners, sendChat, clearChat } from './ai.js';
-import { handleCreateStory, handleOpenFolder, openStory, loadNodes, setupExplorerListeners } from './fileExplorer.js';
+import { handleCreateStory, handleOpenFolder, openStory, loadNodes, setupExplorerListeners, handleNewFile, handleNewFolder, handleRename, handleDeleteBtn } from './fileExplorer.js';
 import { saveActiveFile } from './editor.js';
-import { invoke } from './services/tauri.js';
+import { invoke, fs, path } from './services/tauri.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
@@ -36,6 +36,18 @@ function setupEventListeners() {
 
     const refreshBtn = document.getElementById('refresh-explorer');
     if (refreshBtn) refreshBtn.onclick = () => loadNodes(state.currentStoryPath);
+
+    const newFileBtn = document.getElementById('new-file-btn');
+    if (newFileBtn) newFileBtn.onclick = handleNewFile;
+
+    const newFolderBtn = document.getElementById('new-folder-btn');
+    if (newFolderBtn) newFolderBtn.onclick = handleNewFolder;
+
+    const renameNodeBtn = document.getElementById('rename-node-btn');
+    if (renameNodeBtn) renameNodeBtn.onclick = handleRename;
+
+    const deleteNodeBtn = document.getElementById('delete-node-btn');
+    if (deleteNodeBtn) deleteNodeBtn.onclick = handleDeleteBtn;
 
     // Editor Actions
     // (Manual save button removed, using auto-save and Ctrl+S)
@@ -109,12 +121,18 @@ window.showModal = function(title, action, extra = {}) {
 
         if (action === "create-node") {
             try {
-                await invoke('create_node', {
-                    rootPath: state.currentStoryPath,
-                    parentPath: extra.parentPath,
-                    name: val,
-                    nodeType: extra.type,
-                });
+                let fileName = val;
+                if (extra.type === 'file' && !fileName.includes('.')) {
+                    fileName += '.md';
+                }
+                const newPath = await path.join(extra.parentPath, fileName);
+                
+                if (extra.type === 'file') {
+                    await fs.writeTextFile(newPath, "");
+                } else {
+                    await fs.mkdir(newPath);
+                }
+                
                 await loadNodes(state.currentStoryPath);
             } catch (err) {
                 alert("Lỗi: " + err);
@@ -141,21 +159,18 @@ window.showModal = function(title, action, extra = {}) {
             }
         } else if (action === "rename-node") {
             try {
-                await invoke('rename_node', {
-                    rootPath: state.currentStoryPath,
-                    oldPath: extra.nodePath,
-                    newName: val,
-                });
+                const parentDir = await path.dirname(extra.nodePath);
+                const newPath = await path.join(parentDir, val);
+                await fs.rename(extra.nodePath, newPath);
+                
                 await loadNodes(state.currentStoryPath);
                 
                 const tab = state.openTabs.find(t => t.path === extra.nodePath);
                 if (tab) {
-                    const parts = tab.path.split(/[/\\]/);
-                    parts[parts.length - 1] = val;
-                    tab.path = parts.join('/');
+                    tab.path = newPath;
                     tab.name = val;
                     if (state.activeFilePath === extra.nodePath) {
-                        state.activeFilePath = tab.path;
+                        state.activeFilePath = newPath;
                     }
                     import('./editor.js').then(module => module.renderTabs());
                 }
