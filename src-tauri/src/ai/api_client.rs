@@ -10,6 +10,33 @@ pub fn get_api_key() -> Result<String, String> {
         .map_err(|_| "GEMINI_API_KEY chưa được cấu hình trong file .env".to_string())
 }
 
+#[tauri::command]
+pub fn check_api_key() -> bool {
+    get_api_key().is_ok()
+}
+
+#[tauri::command]
+pub fn save_api_key(api_key: String) -> Result<(), String> {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+
+    // 1. Lưu vào biến môi trường hiện tại
+    std::env::set_var("GEMINI_API_KEY", &api_key);
+
+    // 2. Ghi vào file .env
+    let env_content = format!("\nGEMINI_API_KEY={}\n", api_key);
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(".env")
+        .map_err(|e| format!("Không thể mở file .env: {}", e))?;
+
+    file.write_all(env_content.as_bytes())
+        .map_err(|e| format!("Không thể ghi vào file .env: {}", e))?;
+
+    Ok(())
+}
+
 /// Mô hình AI đang dùng
 pub fn get_model() -> String {
     std::env::var("AI_MODEL").unwrap_or_else(|_| "gemma-4-31b-it".to_string())

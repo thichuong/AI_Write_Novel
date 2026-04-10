@@ -108,6 +108,55 @@ export function setupAIListeners() {
             }
         }
     });
+
+    // Khởi tạo UI API Key
+    initAPIKeyUI();
+}
+
+async function initAPIKeyUI() {
+    const hasKey = await invoke('check_api_key');
+    const apiKeyContainer = document.getElementById('api-key-container');
+    const chatInputContainer = document.querySelector('.chat-input-container');
+
+    if (!hasKey) {
+        if (apiKeyContainer) apiKeyContainer.classList.remove('hidden');
+        if (chatInputContainer) chatInputContainer.classList.add('hidden');
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    const saveBtn = document.getElementById('save-api-key-btn');
+    const keyInput = document.getElementById('api-key-input');
+
+    if (saveBtn && keyInput) {
+        saveBtn.onclick = async () => {
+            const key = keyInput.value.trim();
+            if (!key) {
+                showStatus("Vui lòng nhập API Key!");
+                return;
+            }
+
+            try {
+                saveBtn.disabled = true;
+                saveBtn.innerText = "Đang lưu...";
+                await invoke('save_api_key', { apiKey: key });
+                
+                showStatus("Đã lưu API Key thành công!");
+                if (apiKeyContainer) apiKeyContainer.classList.add('hidden');
+                if (chatInputContainer) chatInputContainer.classList.remove('hidden');
+            } catch (err) {
+                console.error("Failed to save API key:", err);
+                showStatus("Lỗi khi lưu key: " + err);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "Lưu Key";
+            }
+        };
+
+        // Hỗ trợ nhấn Enter để lưu
+        keyInput.onkeydown = (e) => {
+            if (e.key === 'Enter') saveBtn.click();
+        };
+    }
 }
 
 function getOrCreatePhaseContainer(phase) {
@@ -146,6 +195,17 @@ export async function sendChat() {
     
     const msg = chatInput.value.trim();
     if (!msg) return;
+
+    // Kiểm tra API Key lần nữa trước khi gửi (đề phòng)
+    const hasKey = await invoke('check_api_key');
+    if (!hasKey) {
+        const apiKeyContainer = document.getElementById('api-key-container');
+        const chatInputContainer = document.querySelector('.chat-input-container');
+        if (apiKeyContainer) apiKeyContainer.classList.remove('hidden');
+        if (chatInputContainer) chatInputContainer.classList.add('hidden');
+        showStatus("Vui lòng cấu hình API Key!");
+        return;
+    }
 
     addChatMessage("user", msg);
     state.chatHistory.push({ role: "user", content: msg });

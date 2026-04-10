@@ -120,6 +120,20 @@
                     </button>
                 </div>
             </div>
+
+            <!-- API Key Input (Chỉ hiện khi chưa có key) -->
+            <div id="api-key-container" class="hidden">
+                <div class="api-key-box">
+                    <i data-lucide="key" class="api-key-icon"></i>
+                    <h4>Thiếu Gemini API Key</h4>
+                    <p>Vui lòng nhập API Key để bắt đầu sử dụng AI Assistant.</p>
+                    <div class="api-key-input-wrapper">
+                        <input type="password" id="api-key-input" placeholder="Dán API Key của bạn vào đây...">
+                        <button id="save-api-key-btn">Lưu Key</button>
+                    </div>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="get-key-link">Lấy API Key tại đây <i data-lucide="external-link"></i></a>
+                </div>
+            </div>
         </aside>
 
     </div>

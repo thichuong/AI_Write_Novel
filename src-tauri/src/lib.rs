@@ -32,6 +32,8 @@ pub fn run() {
             fs::save_chat_history,
             // AI Agent commands
             ai::chat::ai_chat,
+            ai::api_client::check_api_key,
+            ai::api_client::save_api_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
