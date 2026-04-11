@@ -11,13 +11,20 @@ export function debounce(func, timeout = 300) {
     };
 }
 
-export function showStatus(text) {
+export function showStatus(text, isError = false) {
     const syncEl = document.getElementById('sync-status');
     if (!syncEl) return;
-    syncEl.innerHTML = `<i data-lucide="loader"></i> ${text}`;
+    
+    const icon = isError ? "alert-circle" : "loader";
+    syncEl.innerHTML = `<i data-lucide="${icon}"></i> ${text}`;
+    if (isError) syncEl.classList.add('error');
+    else syncEl.classList.remove('error');
+    
     if (window.lucide) window.lucide.createIcons();
+    
     setTimeout(() => {
         syncEl.innerHTML = `<i data-lucide="hard-drive"></i> File System`;
+        syncEl.classList.remove('error');
         if (window.lucide) window.lucide.createIcons();
-    }, 3000);
+    }, 5000); // 5s for errors/status
 }

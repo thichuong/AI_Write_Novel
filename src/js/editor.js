@@ -58,7 +58,7 @@ export async function openFile(input) {
         }
     } catch (err) {
         console.error("Failed to open file:", err);
-        alert("Không thể mở file: " + err);
+        showStatus("Không thể mở file", true);
     }
 }
 
@@ -136,7 +136,7 @@ export async function saveActiveFile(silent = false) {
         if (wordCount) wordCount.innerText = `Chars: ${content.length}`;
     } catch (err) {
         console.error("Save failed:", err);
-        showStatus("Lưu thất bại!");
+        showStatus("Lưu thất bại!", true);
     }
 }
 

@@ -109,6 +109,17 @@ export function setupAIListeners() {
         }
     });
 
+    listen('ai-agent-selected', (event) => {
+        const agent = event.payload;
+        const agentMap = {
+            'chat': 'Chat Agent',
+            'ideation': 'Ideation Agent',
+            'writing': 'Writing Agent',
+            'general': 'General Agent'
+        };
+        showStatus(`Đã điều phối tới: ${agentMap[agent] || agent}`);
+    });
+
     // Khởi tạo UI API Key
     initAPIKeyUI();
 }
@@ -172,6 +183,9 @@ function getOrCreatePhaseContainer(phase) {
         const badge = document.createElement('div');
         badge.className = 'agent-step-badge';
         const phaseMap = {
+            'routing': '🧠 Điều phối Agent',
+            'chatting': '💬 Đang chuẩn bị',
+            'chat': '💬 Phản hồi trực tiếp',
             'analyze': '🔍 Phân tích ngữ cảnh',
             'execute': '⚙️ Đang thực thi',
             'summarize': '📝 Tổng hợp diễn biến',
@@ -225,9 +239,15 @@ export async function sendChat() {
         });
     } catch (err) {
         console.error("AI chat failed:", err);
-        aiMsgDiv.innerText = "Lỗi: " + err;
         aiMsgDiv.classList.remove('streaming');
-        showStatus("Lỗi AI");
+        
+        const errorBox = document.createElement('div');
+        errorBox.className = 'error-box';
+        errorBox.innerHTML = `<i data-lucide="alert-octagon"></i> <span><strong>Lỗi hệ thống:</strong> ${err}</span>`;
+        aiMsgDiv.appendChild(errorBox);
+        
+        if (window.lucide) window.lucide.createIcons();
+        showStatus("Lỗi AI Assistant", true);
     }
 }
 

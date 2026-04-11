@@ -47,7 +47,7 @@ export async function initSettings() {
 
         } catch (err) {
             console.error("Failed to save settings:", err);
-            showStatus("Lỗi khi lưu cấu hình: " + err);
+            showStatus("Lỗi lưu cấu hình!", true);
         } finally {
             saveSettingsBtn.disabled = false;
             saveSettingsBtn.innerText = "Lưu Cấu Hình";

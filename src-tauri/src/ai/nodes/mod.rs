@@ -1,4 +1,5 @@
 use crate::ai::api_client::stream_gemini_response;
+use serde::{Deserialize, Serialize};
 use crate::ai::gemini_types::{
     FunctionCallingConfig, FunctionResponseData, GeminiContent, GeminiPart, GeminiRequest,
     GenerationConfig, ThinkingConfig, ToolConfig,
@@ -9,9 +10,38 @@ use tauri::{AppHandle, Emitter};
 
 pub mod analyze;
 pub mod complete;
+pub mod coordinate;
 pub mod execute;
 pub mod memory;
 pub mod summarize;
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum AgentType {
+    Chat,
+    Ideation,
+    Writing,
+    General,
+}
+
+impl AgentType {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Chat => "chat",
+            Self::Ideation => "ideation",
+            Self::Writing => "writing",
+            Self::General => "general",
+        }
+    }
+
+    pub const fn description(&self) -> &'static str {
+        match self {
+            Self::Chat => "Chat Agent (Trò chuyện & Tìm kiếm)",
+            Self::Ideation => "Ideation Agent (Lên ý tưởng)",
+            Self::Writing => "Writing Agent (Sáng tác & Chỉnh sửa)",
+            Self::General => "General Agent (Xử lý tác vụ tổng hợp)",
+        }
+    }
+}
 
 /// Trạng thái của Agent trong quá trình xử lý đa bước
 pub struct AgentState {

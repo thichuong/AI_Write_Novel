@@ -1,9 +1,9 @@
 use super::api_client::{get_api_key, get_model};
 use super::nodes::{
-    analyze::analyze_step, complete::complete_step, execute::execute_step, memory::memory_step,
-    summarize::summarize_step, run_agent_loop, AgentState,
+    analyze::analyze_step, complete::complete_step, coordinate::coordinate_step,
+    execute::execute_step, memory::memory_step, summarize::summarize_step, run_agent_loop,
+    AgentState, AgentType,
 };
-use super::router::{classify_intent, AgentType};
 use tauri::{AppHandle, Emitter};
 
 use super::instructions::{
@@ -22,14 +22,7 @@ pub async fn ai_chat(
     let api_key = get_api_key()?;
     let model = get_model();
 
-    // 1. Phân loại ý định (Router)
-    app_handle.emit("ai-agent-step", "routing").ok();
-    let agent_type = classify_intent(&api_key, &model, &message).await.unwrap_or(AgentType::General);
-    
-    // Thông báo cho UI biết đang dùng Agent nào
-    app_handle.emit("ai-agent-selected", agent_type.as_str()).ok();
-
-    // 2. Khởi tạo State
+    // 1. Khởi tạo State với ngữ cảnh cơ bản
     let mut state = AgentState {
         app_handle: app_handle.clone(),
         root_path: root_path.clone(),
@@ -40,18 +33,38 @@ pub async fn ai_chat(
         loop_count: 0,
     };
 
-    // 3. Setup Context dựa trên AgentType
-    setup_initial_context(&mut state, message, chat_history, agent_type);
+    // Chuẩn bị nội dung hội thoại (lịch sử + tin nhắn mới)
+    prepare_conversation_contents(&mut state, message, chat_history);
+
+    // 2. Điều phối thông minh (Coordinator)
+    // Node này có thể tự trả lời nếu câu hỏi đơn giản
+    app_handle.emit("ai-agent-step", "coordinating").ok();
+    let agent_type = match coordinate_step(&mut state).await {
+        Ok(Some(at)) => at,
+        Ok(None) => return Ok(()), // Đã trả lời trực tiếp, kết thúc.
+        Err(e) => {
+            app_handle.emit("ai-chat-stream-thought", serde_json::json!({
+                "phase": "coordinating",
+                "text": format!("⚠️ Cảnh báo: Lỗi điều phối ({e}). Chuyển sang General Agent.\n")
+            })).ok();
+            AgentType::General
+        }
+    };
+
+    // 3. Setup Instruction chuyên biệt cho Agent đã chọn
+    apply_agent_instructions(&mut state, agent_type);
 
     // 4. Luồng xử lý theo Agent
     match agent_type {
         AgentType::Chat => {
             app_handle.emit("ai-agent-step", "chatting").ok();
+            
             // Chat Agent giờ đây cũng có thể dùng Tool (Search, Read File)
             run_agent_loop(&mut state, 3, "chat").await?;
+            
+            app_handle.emit("ai-chat-stream-done", serde_json::json!({ "phase": "chatting" })).ok();
         }
         AgentType::Ideation => {
-            // Quy trình rút gọn cho Ideation: Analyze -> Execute (Brainstorm) -> Summarize
             app_handle.emit("ai-agent-step", "analyze").ok();
             analyze_step(&mut state).await?;
 
@@ -62,7 +75,6 @@ pub async fn ai_chat(
             summarize_step(&mut state).await?;
         }
         AgentType::Writing | AgentType::General => {
-            // Quy trình Đa bước đầy đủ (State Machine)
             app_handle.emit("ai-agent-step", "analyze").ok();
             analyze_step(&mut state).await?;
 
@@ -83,31 +95,11 @@ pub async fn ai_chat(
     Ok(())
 }
 
-fn setup_initial_context(
+fn prepare_conversation_contents(
     state: &mut AgentState,
     message: String,
     chat_history: Vec<serde_json::Value>,
-    agent_type: AgentType,
 ) {
-    let base_instruction = match agent_type {
-        AgentType::Chat => CHAT_AGENT_INSTRUCTIONS,
-        AgentType::Ideation => IDEATION_AGENT_INSTRUCTIONS,
-        AgentType::Writing => WRITING_AGENT_INSTRUCTIONS,
-        AgentType::General => AGENT_INSTRUCTIONS,
-    };
-
-    let system_instructions = format!(
-        "{}\n\n{}\n\nHÀNH ĐỘNG: Nếu cần thông tin cốt truyện, hãy đọc Wiki hoặc Chương cũ. Nếu cần thông tin thực tế, hãy dùng Google Search.",
-        base_instruction, WIKI_GRAPH_RULES
-    );
-
-    state.system_instruction = Some(super::gemini_types::GeminiContent {
-        role: "system".to_string(),
-        parts: vec![super::gemini_types::GeminiPart::Text {
-            text: system_instructions,
-        }],
-    });
-
     // Lấy lịch sử chat (6 tin nhắn gần nhất)
     let historical_context: Vec<&serde_json::Value> = chat_history.iter().rev().take(6).collect();
     for msg in historical_context.into_iter().rev() {
@@ -130,4 +122,24 @@ fn setup_initial_context(
             parts: vec![super::gemini_types::GeminiPart::Text { text: message }],
         });
     }
+}
+
+fn apply_agent_instructions(state: &mut AgentState, agent_type: AgentType) {
+    let base_instruction = match agent_type {
+        AgentType::Chat => CHAT_AGENT_INSTRUCTIONS,
+        AgentType::Ideation => IDEATION_AGENT_INSTRUCTIONS,
+        AgentType::Writing => WRITING_AGENT_INSTRUCTIONS,
+        AgentType::General => AGENT_INSTRUCTIONS,
+    };
+
+    let system_instructions = format!(
+        "{base_instruction}\n\n{WIKI_GRAPH_RULES}\n\nHÀNH ĐỘNG: Nếu cần thông tin cốt truyện, hãy đọc Wiki hoặc Chương cũ. Nếu cần thông tin thực tế, hãy dùng Google Search."
+    );
+
+    state.system_instruction = Some(super::gemini_types::GeminiContent {
+        role: "system".to_string(),
+        parts: vec![super::gemini_types::GeminiPart::Text {
+            text: system_instructions,
+        }],
+    });
 }

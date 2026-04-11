@@ -187,6 +187,31 @@ sl-tree-item::part(children) {
     padding-left: 1px;
 }
 
+.error-box {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    color: #fca5a5;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.error-box i,
+.error-box svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.status-item #sync-status.error {
+    color: #ef4444;
+}
+
 sl-tree-item::part(base) {
     padding: 4px 8px;
     border-radius: 4px;

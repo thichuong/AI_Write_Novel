@@ -47,25 +47,25 @@ pub fn save_settings(api_key: String, model: String) -> Result<(), String> {
         String::new()
     };
 
-    let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+    let mut lines: Vec<String> = content.lines().map(std::string::ToString::to_string).collect();
     let mut key_found = false;
     let mut model_found = false;
 
-    for line in lines.iter_mut() {
+    for line in &mut lines {
         if line.starts_with("GEMINI_API_KEY=") {
-            *line = format!("GEMINI_API_KEY={}", api_key);
+            *line = format!("GEMINI_API_KEY={api_key}");
             key_found = true;
         } else if line.starts_with("AI_MODEL=") {
-            *line = format!("AI_MODEL={}", model);
+            *line = format!("AI_MODEL={model}");
             model_found = true;
         }
     }
 
     if !key_found {
-        lines.push(format!("GEMINI_API_KEY={}", api_key));
+        lines.push(format!("GEMINI_API_KEY={api_key}"));
     }
     if !model_found {
-        lines.push(format!("AI_MODEL={}", model));
+        lines.push(format!("AI_MODEL={model}"));
     }
 
     fs::write(path, lines.join("\n") + "\n").map_err(|e| format!("Không thể ghi file .env: {e}"))?;

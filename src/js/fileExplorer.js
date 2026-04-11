@@ -108,7 +108,7 @@ export async function handleOpenFolder() {
         }
     } catch (err) {
         console.error("Failed to open dialog:", err);
-        alert("Lỗi: " + err);
+        showStatus("Không thể mở hộp thoại", true);
     }
 }
 
@@ -138,7 +138,7 @@ export function handleRename() {
     if (state.selectedNodePath) {
         renameNodePrompt(state.selectedNodePath, state.selectedNodeName);
     } else {
-        alert("Vui lòng chọn một tệp hoặc thư mục để đổi tên.");
+        showStatus("Chọn một tệp để đổi tên!", true);
     }
 }
 
@@ -146,7 +146,7 @@ export function handleDeleteBtn() {
     if (state.selectedNodePath) {
         deleteNode(state.selectedNodePath, state.selectedNodeName, state.selectedNodeType);
     } else {
-        alert("Vui lòng chọn một tệp hoặc thư mục để xóa.");
+        showStatus("Chọn một tệp để xóa!", true);
     }
 }
 
@@ -163,7 +163,7 @@ export async function handleCreateStory() {
         }
     } catch (err) {
         console.error("Failed to open dialog:", err);
-        alert("Lỗi: " + err);
+        showStatus("Lỗi mở hộp thoại", true);
     }
 }
 
@@ -228,7 +228,7 @@ export async function loadNodes(rootPath) {
         renderExplorer();
     } catch (err) {
         console.error("Failed to load nodes:", err);
-        alert("Không thể tải danh sách file: " + err);
+        showStatus("Lỗi tải danh sách file", true);
     }
 }
 window.loadNodes = loadNodes;
@@ -355,7 +355,7 @@ export async function deleteNode(nodePath, nodeName, nodeType) {
         }
     } catch (err) {
         console.error("Delete failed:", err);
-        alert("Xóa thất bại: " + err);
+        showStatus("Xóa thất bại!", true);
     }
 }
 window.deleteNode = deleteNode;
