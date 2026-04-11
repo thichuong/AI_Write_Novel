@@ -2,8 +2,7 @@ use super::api_client::{get_api_key, get_model};
 use super::cancellation::CancellationState;
 use super::nodes::{
     analyze::analyze_step, complete::complete_step, coordinate::coordinate_step,
-    execute::execute_step, memory::memory_step, run_agent_loop, summarize::summarize_step,
-    AgentState, AgentType,
+    execute::execute_step, finalize::finalize_step, run_agent_loop, AgentState, AgentType,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -96,8 +95,8 @@ pub async fn ai_chat(
             if cancel_state.is_cancelled() {
                 return Err("Stopped".to_string());
             }
-            app_handle.emit("ai-agent-step", "summarize").ok();
-            summarize_step(&mut state, cancel_state.clone()).await?;
+            app_handle.emit("ai-agent-step", "finalize").ok();
+            finalize_step(&mut state, cancel_state.clone()).await?;
 
             if cancel_state.is_cancelled() {
                 return Err("Stopped".to_string());
@@ -118,14 +117,8 @@ pub async fn ai_chat(
             if cancel_state.is_cancelled() {
                 return Err("Stopped".to_string());
             }
-            app_handle.emit("ai-agent-step", "summarize").ok();
-            summarize_step(&mut state, cancel_state.clone()).await?;
-
-            if cancel_state.is_cancelled() {
-                return Err("Stopped".to_string());
-            }
-            app_handle.emit("ai-agent-step", "memory").ok();
-            memory_step(&mut state, cancel_state.clone()).await?;
+            app_handle.emit("ai-agent-step", "finalize").ok();
+            finalize_step(&mut state, cancel_state.clone()).await?;
 
             if cancel_state.is_cancelled() {
                 return Err("Stopped".to_string());

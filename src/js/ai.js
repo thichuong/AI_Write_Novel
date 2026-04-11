@@ -201,6 +201,7 @@ function getOrCreatePhaseContainer(phase) {
             'execute': '⚙️ Đang thực thi',
             'summarize': '📝 Tổng hợp diễn biến',
             'memory': '💾 Cập nhật Memory',
+            'finalize': '📝 Tổng hợp & Cập nhật Memory',
             'complete': '✅ Hoàn tất & Phản hồi'
         };
         badge.innerText = phaseMap[phase] || phase;

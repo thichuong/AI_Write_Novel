@@ -13,8 +13,7 @@ pub mod analyze;
 pub mod complete;
 pub mod coordinate;
 pub mod execute;
-pub mod memory;
-pub mod summarize;
+pub mod finalize;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum AgentType {
