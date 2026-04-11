@@ -69,6 +69,8 @@ pub async fn run_agent_loop(
         thinking_config: Some(ThinkingConfig {
             thinking_level: "HIGH".to_string(),
         }),
+        response_mime_type: None,
+        response_schema: None,
     };
 
     // ToolConfig để cho phép dùng Built-in tools (Google Search) chung với Function calling
@@ -129,6 +131,11 @@ pub async fn run_agent_loop(
 
         // Thông báo cho UI là đã xử lý xong Tool
         state.app_handle.emit("ai-chat-stream-tool-done", ()).ok();
+
+        // Tối ưu hóa Context (Context Pruning) nếu đang ở các bước sau
+        if phase == "finalize" || phase == "complete" {
+            prune_history(&mut state.contents);
+        }
     }
 
     // Thông báo toàn bộ phase đã hoàn thành
@@ -229,4 +236,41 @@ fn execute_tool_calls(
         });
     }
     response_parts
+}
+
+/// Tối ưu hóa lịch sử: Loại bỏ các `FunctionResponse` cũ hoặc các nội dung quá lớn
+/// để tiết kiệm token cho các bước cuối cùng.
+fn prune_history(contents: &mut Vec<GeminiContent>) {
+    if contents.len() <= 6 {
+        return; // Không dọn dẹp nếu lịch sử còn ngắn
+    }
+
+    let mut new_contents = Vec::new();
+
+    // Giữ lại tin nhắn đầu tiên (user prompt đầu)
+    if let Some(first_msg) = contents.first().cloned() {
+        new_contents.push(first_msg);
+    }
+
+    // Giữ lại 5 tin nhắn cuối cùng
+    // Trong các tin nhắn được giữ lại, nếu là 'function' (FunctionResponse),
+    // ta có thể thay thế nội dung kết quả quá lớn bằng một thông báo ngắn nếu nó không phải là tin nhắn mới nhất.
+    for (i, mut msg) in contents.iter().rev().take(5).rev().cloned().enumerate() {
+        if msg.role == "function" && i < 4 {
+            // Không phải tin nhắn cuối cùng
+            for part in &mut msg.parts {
+                if let GeminiPart::FunctionResponse { function_response } = part {
+                    let res_str = function_response.response.to_string();
+                    if res_str.len() > 1000 {
+                        function_response.response = json!({
+                            "result": "Content truncated to save tokens (information already processed in previous steps)."
+                        });
+                    }
+                }
+            }
+        }
+        new_contents.push(msg);
+    }
+
+    *contents = new_contents;
 }

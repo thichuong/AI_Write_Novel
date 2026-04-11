@@ -1,19 +1,32 @@
 use super::{run_agent_loop, AgentState};
 use crate::ai::cancellation::CancellationState;
 use crate::ai::gemini_types::{GeminiContent, GeminiPart};
+use crate::ai::tools::{tool_list_directory, tool_read_file, tool_wiki_list_entities};
 use tauri::State;
 
 pub async fn analyze_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
 ) -> Result<(), String> {
-    let analyze_prompt =
+    // 1. Thu thập tri thức tự động từ backend
+    let dir_context = tool_list_directory(&state.root_path, ".")
+        .unwrap_or_else(|e| format!("Lỗi liệt kê: {e}"));
+    let memory_context = tool_read_file(&state.root_path, "memory.md")
+        .unwrap_or_else(|_| "Chưa có file memory.md hoặc file trống.".to_string());
+    let wiki_context =
+        tool_wiki_list_entities(&state.root_path).unwrap_or_else(|e| format!("Lỗi Wiki: {e}"));
+
+    let analyze_prompt = format!(
         "PHÂN TÍCH VÀ NẠP KIẾN THỨC:\n\
-        1. Gọi `list_directory('.')` để nắm cấu trúc.\n\
-        2. Gọi `read_file('memory.md')` để hiểu bối cảnh dự án.\n\
-        3. Nếu cần thông tin nhân vật/thế giới, gọi `wiki_list_entities()`.\n\
-        4. Sau đó, lập kế hoạch chi tiết để giải quyết yêu cầu của người dùng dựa trên tri thức đã nạp."
-            .to_string();
+        Dưới đây là tri thức về dự án tôi đã nạp sẵn cho bạn:\n\n\
+        ### CẤU TRÚC THƯ MỤC:\n{dir_context}\n\n\
+        ### NỘI DUNG MEMORY.MD:\n{memory_context}\n\n\
+        ### DANH SÁCH WIKI:\n{wiki_context}\n\n\
+        Nhiệm vụ của bạn:\n\
+        1. Xem xét các thông tin trên và đối chiếu với yêu cầu của người dùng.\n\
+        2. Nếu cần đọc chi tiết một file cụ thể hoặc Wiki cụ thể để giải quyết yêu cầu, hãy gọi công cụ tương ứng.\n\
+        3. Sau đó, lập kế hoạch chi tiết để thực hiện. Nếu mục tiêu đơn giản, có thể thông báo kế hoạch và bắt đầu thực hiện luôn."
+    );
 
     state.contents.push(GeminiContent {
         role: "user".to_string(),

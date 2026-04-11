@@ -55,6 +55,10 @@ pub struct GenerationConfig {
     pub max_output_tokens: u32,
     #[serde(rename = "thinkingConfig", skip_serializing_if = "Option::is_none")]
     pub thinking_config: Option<ThinkingConfig>,
+    #[serde(rename = "responseMimeType", skip_serializing_if = "Option::is_none")]
+    pub response_mime_type: Option<String>,
+    #[serde(rename = "responseSchema", skip_serializing_if = "Option::is_none")]
+    pub response_schema: Option<Schema>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -105,7 +109,7 @@ pub struct FunctionDecl {
     pub parameters: Schema,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Schema {
     #[serde(rename = "type")]
     pub field_type: String,
