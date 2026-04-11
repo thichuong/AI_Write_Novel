@@ -1,7 +1,7 @@
 use crate::ai::api_client::stream_gemini_response;
 use crate::ai::gemini_types::{
-    FunctionResponseData, GeminiContent, GeminiPart, GeminiRequest, GenerationConfig,
-    ThinkingConfig,
+    FunctionCallingConfig, FunctionResponseData, GeminiContent, GeminiPart, GeminiRequest,
+    GenerationConfig, ThinkingConfig, ToolConfig,
 };
 use crate::ai::tools;
 use serde_json::json;
@@ -40,6 +40,14 @@ pub async fn run_agent_loop(
         }),
     };
 
+    // ToolConfig để cho phép dùng Built-in tools (Google Search) chung với Function calling
+    let tool_config = ToolConfig {
+        function_calling_config: Some(FunctionCallingConfig {
+            mode: "AUTO".to_string(),
+        }),
+        include_server_side_tool_invocations: Some(true),
+    };
+
     let mut local_loops = 0;
     loop {
         local_loops += 1;
@@ -54,6 +62,7 @@ pub async fn run_agent_loop(
             system_instruction: state.system_instruction.clone(),
             generation_config: Some(generation_config.clone()),
             tools: Some(tool_decls.clone()),
+            tool_config: Some(tool_config.clone()),
         };
 
         // Stream kết quả về frontend
@@ -79,7 +88,7 @@ pub async fn run_agent_loop(
         }
 
         // Xử lý Tool Calls
-        let response_parts = execute_tool_calls(state, function_calls);
+        let response_parts = execute_tool_calls(state, function_calls).await;
 
         state.contents.push(GeminiContent {
             role: "function".to_string(),
@@ -116,7 +125,7 @@ fn process_model_parts(
     (function_calls, has_text_done)
 }
 
-fn execute_tool_calls(
+async fn execute_tool_calls(
     state: &AgentState,
     function_calls: Vec<crate::ai::gemini_types::FunctionCallData>,
 ) -> Vec<GeminiPart> {

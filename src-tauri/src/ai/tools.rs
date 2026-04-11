@@ -1,4 +1,6 @@
-use crate::ai::gemini_types::{FunctionDecl, Schema, ToolDeclaration};
+use crate::ai::gemini_types::{
+    FunctionDecl, GoogleSearch, Schema, ToolDeclaration,
+};
 use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -173,16 +175,25 @@ pub fn tool_wiki_upsert_entity(
 
 /// Trả về khai báo các công cụ cho Gemini
 pub fn get_tool_declarations() -> Vec<ToolDeclaration> {
-    vec![ToolDeclaration {
-        function_declarations: vec![
-            decl_list_directory(),
-            decl_read_file(),
-            decl_write_file(),
-            decl_delete_file(),
-            decl_wiki_list_entities(),
-            decl_wiki_upsert_entity(),
-        ],
-    }]
+    vec![
+        // Tool cho các function tùy biến (Wiki, File System)
+        ToolDeclaration {
+            function_declarations: Some(vec![
+                decl_list_directory(),
+                decl_read_file(),
+                decl_write_file(),
+                decl_delete_file(),
+                decl_wiki_list_entities(),
+                decl_wiki_upsert_entity(),
+            ]),
+            google_search: None,
+        },
+        // Tool cho Google Search "chính chủ" của Gemini theo mẫu mới
+        ToolDeclaration {
+            function_declarations: None,
+            google_search: Some(GoogleSearch {}),
+        },
+    ]
 }
 
 fn decl_list_directory() -> FunctionDecl {

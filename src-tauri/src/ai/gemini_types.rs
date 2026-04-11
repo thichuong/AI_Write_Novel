@@ -10,6 +10,8 @@ pub struct GeminiRequest {
     pub generation_config: Option<GenerationConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<Vec<ToolDeclaration>>,
+    #[serde(rename = "toolConfig", skip_serializing_if = "Option::is_none")]
+    pub tool_config: Option<ToolConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -63,8 +65,28 @@ pub struct ThinkingConfig {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ToolDeclaration {
-    #[serde(rename = "functionDeclarations")]
-    pub function_declarations: Vec<FunctionDecl>,
+    #[serde(rename = "functionDeclarations", skip_serializing_if = "Option::is_none")]
+    pub function_declarations: Option<Vec<FunctionDecl>>,
+    #[serde(rename = "googleSearch", skip_serializing_if = "Option::is_none")]
+    pub google_search: Option<GoogleSearch>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct GoogleSearch {
+    // Để trống theo yêu cầu mẫu json mới: "googleSearch": {}
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ToolConfig {
+    #[serde(rename = "functionCallingConfig", skip_serializing_if = "Option::is_none")]
+    pub function_calling_config: Option<FunctionCallingConfig>,
+    #[serde(rename = "includeServerSideToolInvocations", skip_serializing_if = "Option::is_none")]
+    pub include_server_side_tool_invocations: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct FunctionCallingConfig {
+    pub mode: String,
 }
 
 #[derive(Debug, Serialize, Clone)]
