@@ -64,3 +64,63 @@ Hệ thống Wiki Graph giúp quản lý các thực thể trong tiểu thuyết
 Mỗi thực thể là một file `.md` có cấu trúc cụ thể với YAML Frontmatter để lưu trữ metadata.
 Agent nên sử dụng liên kết `[[Tên Thực Thể]]` để kết nối các trang Wiki với nhau.
 ";
+
+// --- NODE SPECIALIZED PROMPTS ---
+
+// 1. ANALYZE STEP
+pub const ANALYZE_PROMPT_WRITING: &str = r"
+PHÂN TÍCH TIẾN ĐỘ & VĂN PHONG:
+1. Kiểm tra các chương gần nhất để nắm bắt giọng văn và mạch hiện tại.
+2. Đối chiếu Wiki để đảm bảo nhân vật nhất quán.
+3. Lập kế hoạch chi tiết cho nội dung sắp viết.
+LƯU Ý QUAN TRỌNG: Chỉ phân tích và lập kế hoạch. TUYỆT ĐỐI KHÔNG viết nội dung truyện trong bước này. Việc viết sẽ được thực hiện ở bước sau.";
+
+pub const ANALYZE_PROMPT_IDEATION: &str = r"
+PHÂN TÍCH KHÔNG GIAN SÁNG TẠO:
+1. Tìm kiếm các điểm chưa rõ ràng hoặc mâu thuẫn trong thế giới/cốt truyện hiện tại.
+2. Xác định các hướng đi tiềm năng có thể mở rộng.
+3. Lập danh sách các chủ đề cần brainstorm.
+LƯU Ý QUAN TRỌNG: Chỉ phân tích và liệt kê các hướng đi. TUYỆT ĐỐI KHÔNG bắt đầu brainstorm chi tiết hay viết nội dung trong bước này.";
+
+pub const ANALYZE_PROMPT_GENERAL: &str = r"
+PHÂN TÍCH TÁC VỤ HỖ TRỢ:
+1. Xác định các yêu cầu kỹ thuật hoặc quản lý (không phải sáng tác trực tiếp).
+2. Kiểm tra các tài liệu dự án cần thiết.
+3. Lập kế hoạch thực hiện ngắn gọn.";
+
+// 2. EXECUTE STEP
+pub const EXECUTE_PROMPT_WRITING: &str = r"
+THỰC HIỆN SÁNG TÁC (Drafting in thoughts):
+- Viết nội dung truyện phong phú, giàu hình ảnh ngay trong phần trả lời này.
+- TUYỆT ĐỐI KHÔNG tự ý sử dụng `write_file` để tạo file chương mới. 
+- Chỉ dùng `write_file` để cập nhật `memory.md` nếu cần lưu lại tiến độ cốt truyện.
+- Khi xong nội dung nháp, kết thúc bằng 'DONE_EXECUTION'.";
+
+pub const EXECUTE_PROMPT_IDEATION: &str = r"
+THỰC HIỆN XÂY DỰNG Ý TƯỞNG:
+- Đưa ra ít nhất 3 phương án sáng tạo khác nhau cho mỗi yêu cầu.
+- Sử dụng công cụ Search để tìm cảm hứng thực tế nếu cần thiết.
+- Phác thảo các khái niệm mới vào Wiki nếu người dùng đồng ý.
+- Khi xong, hãy kết thúc bằng chuỗi 'DONE_EXECUTION'.";
+
+pub const EXECUTE_PROMPT_GENERAL: &str = r"
+THỰC HIỆN TÁC VỤ:
+- Sử dụng các công cụ một cách hiệu quả để hoàn thành mục tiêu.
+- Cập nhật 'memory.md' nếu có thay đổi quan trọng về cấu trúc dự án.
+- Khi xong, hãy kết thúc bằng chuỗi 'DONE_EXECUTION'.";
+
+// 3. FINALIZE STEP
+pub const FINALIZE_PROMPT_WRITING: &str = r"
+TỔNG KẾT PHIÊN VIẾT: Tóm tắt các tình tiết mới đã thêm vào, các nhân vật đã xuất hiện. Cập nhật trạng thái cốt truyện trong 'memory.md'.";
+
+pub const FINALIZE_PROMPT_IDEATION: &str = r"
+TỔNG KẾT Ý TƯỞNG: Hệ thống lại các ý tưởng đã brainstorm. Đảm bảo các khái niệm quan trọng đã được ghi chú lại trong Wiki hoặc Memory.";
+
+pub const FINALIZE_PROMPT_GENERAL: &str = r"
+TỔNG KẾT & CẬP NHẬT: Tóm tắt ngắn gọn các hành động đã thực hiện và cập nhật 'memory.md' để lưu lại trạng thái công việc.";
+
+// 4. COMPLETE STEP
+pub const COMPLETE_PROMPT_WRITING: &str = "HOÀN TẤT: Thông báo cho tác giả rằng chương/đoạn văn đã được viết xong và mời họ đọc lại hoặc đưa ra yêu cầu chỉnh sửa.";
+pub const COMPLETE_PROMPT_IDEATION: &str = "HOÀN TẤT: Giới thiệu các ý tưởng tâm đắc nhất và hỏi xem người dùng muốn đào sâu thêm vào hướng nào.";
+pub const COMPLETE_PROMPT_GENERAL: &str =
+    "HOÀN TẤT: Xác nhận công việc đã hoàn thành và hỏi xem người dùng có cần hỗ trợ gì thêm không.";

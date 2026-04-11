@@ -49,12 +49,12 @@ pub struct AgentState {
     pub root_path: String,
     pub api_key: String,
     pub model: String,
+    pub agent_type: AgentType,
     pub system_instruction: Option<GeminiContent>,
     pub contents: Vec<GeminiContent>,
     pub loop_count: u32,
 }
 
-/// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút
 /// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút
 pub async fn run_agent_loop(
     state: &mut AgentState,

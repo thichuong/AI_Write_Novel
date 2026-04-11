@@ -1,17 +1,21 @@
-use super::{run_agent_loop, AgentState};
 use crate::ai::cancellation::CancellationState;
 use crate::ai::gemini_types::{GeminiContent, GeminiPart};
+use crate::ai::instructions::{
+    FINALIZE_PROMPT_GENERAL, FINALIZE_PROMPT_IDEATION, FINALIZE_PROMPT_WRITING,
+};
+use crate::ai::nodes::{run_agent_loop, AgentState, AgentType};
 use tauri::State;
 
 pub async fn finalize_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
 ) -> Result<(), String> {
-    let finalize_prompt =
-        "BƯỚC TỔNG KẾT & CẬP NHẬT BỘ NHỚ: Hãy tổng hợp lại toàn bộ những hành động và thay đổi bạn đã thực hiện trong phiên này. \
-        Sau đó, sử dụng công cụ `write_file` để cập nhật file `memory.md` với các thông tin mới nhất về dự án, tiến độ và thay đổi đó. \
-        Đảm bảo giữ đúng định dạng Markdown của file memory."
-            .to_string();
+    let finalize_prompt = match state.agent_type {
+        AgentType::Writing => FINALIZE_PROMPT_WRITING,
+        AgentType::Ideation => FINALIZE_PROMPT_IDEATION,
+        _ => FINALIZE_PROMPT_GENERAL,
+    }
+    .to_string();
 
     state.contents.push(GeminiContent {
         role: "user".to_string(),

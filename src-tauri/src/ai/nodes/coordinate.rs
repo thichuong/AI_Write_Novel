@@ -120,10 +120,7 @@ fn get_coordinate_schema() -> crate::ai::gemini_types::Schema {
     }
 }
 
-fn handle_coordinate_response(
-    state: &mut AgentState,
-    json_text: &str,
-) -> Option<AgentType> {
+fn handle_coordinate_response(state: &mut AgentState, json_text: &str) -> Option<AgentType> {
     if let Ok(v) = serde_json::from_str::<serde_json::Value>(json_text) {
         let explanation = v["explanation"].as_str().unwrap_or("");
         let agent_str = v["agent"].as_str();
@@ -183,7 +180,6 @@ fn handle_coordinate_response(
     }
     None
 }
-
 
 fn get_full_text(parts: &[GeminiPart]) -> Option<String> {
     let mut full_text = String::new();

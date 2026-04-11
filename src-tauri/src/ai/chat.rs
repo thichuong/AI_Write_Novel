@@ -34,6 +34,7 @@ pub async fn ai_chat(
         root_path: root_path.clone(),
         api_key,
         model,
+        agent_type: AgentType::General, // Default
         system_instruction: None,
         contents: Vec::new(),
         loop_count: 0,
@@ -45,7 +46,6 @@ pub async fn ai_chat(
     cancel_state.reset();
 
     // 2. Điều phối thông minh (Coordinator)
-    // Node này có thể tự trả lời nếu câu hỏi đơn giản
     app_handle.emit("ai-agent-step", "coordinating").ok();
     let agent_type = match coordinate_step(&mut state, cancel_state.clone()).await {
         Ok(Some(at)) => at,
@@ -70,6 +70,7 @@ pub async fn ai_chat(
             AgentType::General
         }
     };
+    state.agent_type = agent_type;
 
     // 3. Setup Instruction chuyên biệt cho Agent đã chọn
     apply_agent_instructions(&mut state, agent_type);

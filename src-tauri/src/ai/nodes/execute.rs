@@ -1,18 +1,21 @@
-use super::{run_agent_loop, AgentState};
 use crate::ai::cancellation::CancellationState;
 use crate::ai::gemini_types::{GeminiContent, GeminiPart};
+use crate::ai::instructions::{
+    EXECUTE_PROMPT_GENERAL, EXECUTE_PROMPT_IDEATION, EXECUTE_PROMPT_WRITING,
+};
+use crate::ai::nodes::{run_agent_loop, AgentState, AgentType};
 use tauri::State;
 
 pub async fn execute_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
 ) -> Result<(), String> {
-    let execute_prompt =
-        "THỰC HIỆN KẾ HOẠCH: Hãy sử dụng các công cụ cần thiết để hoàn thành mục tiêu.\n\
-        - Bạn có thể gọi nhiều công cụ liên tục.\n\
-        - Luôn cập nhật nhân vật/cốt truyện mới vào CẢ file chương và 'memory.md'.\n\
-        - Khi đã hoàn tất các thay đổi file, hãy kết thúc bằng chuỗi 'DONE_EXECUTION'."
-            .to_string();
+    let execute_prompt = match state.agent_type {
+        AgentType::Writing => EXECUTE_PROMPT_WRITING,
+        AgentType::Ideation => EXECUTE_PROMPT_IDEATION,
+        _ => EXECUTE_PROMPT_GENERAL,
+    }
+    .to_string();
 
     state.contents.push(GeminiContent {
         role: "user".to_string(),
