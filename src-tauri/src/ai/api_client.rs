@@ -16,25 +16,66 @@ pub fn check_api_key() -> bool {
 }
 
 #[tauri::command]
-pub fn save_api_key(api_key: String) -> Result<(), String> {
-    use std::fs::OpenOptions;
-    use std::io::Write;
+pub fn get_settings() -> serde_json::Value {
+    serde_json::json!({
+        "api_key": std::env::var("GEMINI_API_KEY").unwrap_or_default(),
+        "model": get_model(),
+    })
+}
 
+#[tauri::command]
+pub async fn list_models() -> Result<Vec<String>, String> {
+    Ok(vec![
+        "gemma-4-31b-it".to_string(),
+        "gemma-4-26b-a4b-it".to_string(),
+    ])
+}
+
+#[tauri::command]
+pub fn save_settings(api_key: String, model: String) -> Result<(), String> {
+    use std::fs;
+    
     // 1. Lưu vào biến môi trường hiện tại
     std::env::set_var("GEMINI_API_KEY", &api_key);
+    std::env::set_var("AI_MODEL", &model);
 
-    // 2. Ghi vào file .env
-    let env_content = format!("\nGEMINI_API_KEY={}\n", api_key);
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(".env")
-        .map_err(|e| format!("Không thể mở file .env: {}", e))?;
+    // 2. Cập nhật file .env
+    let path = ".env";
+    let content = if std::path::Path::new(path).exists() {
+        fs::read_to_string(path).map_err(|e| format!("Không thể đọc file .env: {e}"))?
+    } else {
+        String::new()
+    };
 
-    file.write_all(env_content.as_bytes())
-        .map_err(|e| format!("Không thể ghi vào file .env: {}", e))?;
+    let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+    let mut key_found = false;
+    let mut model_found = false;
+
+    for line in lines.iter_mut() {
+        if line.starts_with("GEMINI_API_KEY=") {
+            *line = format!("GEMINI_API_KEY={}", api_key);
+            key_found = true;
+        } else if line.starts_with("AI_MODEL=") {
+            *line = format!("AI_MODEL={}", model);
+            model_found = true;
+        }
+    }
+
+    if !key_found {
+        lines.push(format!("GEMINI_API_KEY={}", api_key));
+    }
+    if !model_found {
+        lines.push(format!("AI_MODEL={}", model));
+    }
+
+    fs::write(path, lines.join("\n") + "\n").map_err(|e| format!("Không thể ghi file .env: {e}"))?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn save_api_key(api_key: String) -> Result<(), String> {
+    save_settings(api_key, get_model())
 }
 
 /// Mô hình AI đang dùng

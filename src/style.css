@@ -15,7 +15,7 @@
 
     --sidebar-width: 280px;
     --activity-bar-width: 60px;
-    --chat-panel-width: 600px;
+    --chat-panel-width: min(600px, 40vw);
 }
 
 * {
@@ -78,13 +78,14 @@ body {
 /* 2. Sidebar Explorer */
 #sidebar {
     width: var(--sidebar-width);
-    min-width: var(--sidebar-width);
+    min-width: 200px;
     max-width: var(--sidebar-width);
-    flex-shrink: 0;
+    flex-shrink: 1;
     background-color: var(--bg-sidebar);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .sidebar-section {
@@ -327,6 +328,7 @@ sl-tree-item[data-name="wiki"] sl-icon {
 /* 3. Main Editor Area */
 #editor-container {
     flex-grow: 1;
+    min-width: 400px;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-dark);
@@ -462,12 +464,14 @@ sl-tree-item[data-name="wiki"] sl-icon {
 /* 4. Right Panel: AI Chat */
 #chat-panel {
     width: var(--chat-panel-width);
+    min-width: 350px;
     max-width: var(--chat-panel-width);
-    flex-shrink: 0;
+    flex-shrink: 1;
     background-color: var(--bg-sidebar);
     border-left: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .chat-header {
@@ -579,9 +583,10 @@ sl-tree-item[data-name="wiki"] sl-icon {
     font-family: inherit;
     width: auto;
     height: auto;
-    white-space: nowrap;
-    /* Prevent vertical wrapping */
-    flex-shrink: 0;
+    max-width: 100%;
+    white-space: normal;
+    /* Allow wrapping for long instructions */
+    flex-shrink: 1;
 }
 
 #toggle-enter-btn:hover {
@@ -990,4 +995,67 @@ sl-tree-item[data-name="wiki"] sl-icon {
 .get-key-link i {
     width: 12px;
     height: 12px;
+}
+
+/* Settings Panel */
+.settings-panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-group label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-weight: 500;
+}
+
+.btn-refresh-list {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 5px;
+    transition: all 0.2s ease;
+}
+
+.btn-refresh-list:hover {
+    background: var(--bg-accent);
+    color: var(--text-primary);
+}
+
+.btn-refresh-list i {
+    width: 12px;
+    height: 12px;
+}
+
+.settings-actions {
+    margin-top: 10px;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }

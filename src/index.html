@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,13 +8,17 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Shoelace UI -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/themes/dark.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/shoelace-autoloader.js"></script>
+    <script type="module"
+        src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/shoelace-autoloader.js"></script>
 </head>
+
 <body class="dark-pro sl-theme-dark">
     <div id="app">
         <!-- 1. Activity Bar -->
@@ -65,7 +70,34 @@
                     <!-- Recursive Node Tree -->
                 </sl-tree>
             </div>
-            
+
+            <div class="sidebar-section hidden" id="section-settings">
+                <div class="sidebar-header">
+                    <span>TÙY CHỈNH HỆ THỐNG</span>
+                </div>
+                <div class="sidebar-content settings-panel">
+                    <div class="settings-group">
+                        <label>Gemini API Key</label>
+                        <div class="input-with-button">
+                            <sl-input type="password" id="settings-api-key" placeholder="Dán API Key..."
+                                password-toggle></sl-input>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <label>AI Model</label>
+                        <sl-select id="settings-model" placeholder="Chọn model...">
+                            <sl-option value="gemma-4-31b-it">gemma-4-31b-it</sl-option>
+                            <sl-option value="gemma-4-26b-a4b-it">gemma-4-26b-a4b-it</sl-option>
+                        </sl-select>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button id="save-settings-btn" class="btn-primary full-width">Lưu Cấu Hình</button>
+                    </div>
+                </div>
+            </div>
+
             <div id="sidebar-status-area">
                 <div class="status-item"><i data-lucide="book"></i> <span id="status-story-name">No story</span></div>
                 <div class="status-item"><i data-lucide="hash"></i> <span id="word-count">Chars: 0</span></div>
@@ -93,7 +125,7 @@
                         <!-- Content here -->
                     </div>
                 </div>
-                
+
             </section>
         </main>
 
@@ -131,7 +163,8 @@
                         <input type="password" id="api-key-input" placeholder="Dán API Key của bạn vào đây...">
                         <button id="save-api-key-btn">Lưu Key</button>
                     </div>
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="get-key-link">Lấy API Key tại đây <i data-lucide="external-link"></i></a>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="get-key-link">Lấy API Key
+                        tại đây <i data-lucide="external-link"></i></a>
                 </div>
             </div>
         </aside>
@@ -141,8 +174,10 @@
     <!-- Context Menu -->
     <div id="context-menu" class="hidden">
         <sl-menu id="explorer-context-menu">
-            <sl-menu-item value="new-file"><sl-icon slot="prefix" name="file-earmark-plus"></sl-icon> File mới</sl-menu-item>
-            <sl-menu-item value="new-folder"><sl-icon slot="prefix" name="folder-plus"></sl-icon> Thư mục mới</sl-menu-item>
+            <sl-menu-item value="new-file"><sl-icon slot="prefix" name="file-earmark-plus"></sl-icon> File
+                mới</sl-menu-item>
+            <sl-menu-item value="new-folder"><sl-icon slot="prefix" name="folder-plus"></sl-icon> Thư mục
+                mới</sl-menu-item>
             <sl-divider></sl-divider>
             <sl-menu-item value="rename"><sl-icon slot="prefix" name="pencil"></sl-icon> Đổi tên</sl-menu-item>
             <sl-menu-item value="delete"><sl-icon slot="prefix" name="trash"></sl-icon> Xóa</sl-menu-item>
@@ -168,4 +203,5 @@
     <!-- Entry Point ES Module -->
     <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

@@ -3,6 +3,7 @@ import { debounce } from './utils.js';
 import { setupAIListeners, sendChat, clearChat } from './ai.js';
 import { handleCreateStory, handleOpenFolder, openStory, loadNodes, setupExplorerListeners, handleNewFile, handleNewFolder, handleRename, handleDeleteBtn } from './fileExplorer.js';
 import { saveActiveFile, setupEditorListeners } from './editor.js';
+import { initSettings } from './settings.js';
 import { invoke, fs, path } from './services/tauri.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -10,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupAIListeners();
     setupExplorerListeners();
     setupEditorListeners();
+    initSettings();
     
     // Load last opened folder
     const lastPath = localStorage.getItem('last_story_path');
@@ -146,19 +148,31 @@ function switchActivity(activity) {
     const target = document.getElementById(`nav-${activity}`);
     if (target) target.classList.add('active');
 
+    // Hide all sidebar sections first
+    document.querySelectorAll('.sidebar-section').forEach(sec => sec.classList.add('hidden'));
+
+    if (activity === 'explorer') {
+        document.getElementById('section-stories').classList.remove('hidden');
+        document.getElementById('section-explorer').classList.remove('hidden');
+    } else if (activity === 'story-settings') {
+        document.getElementById('section-settings').classList.remove('hidden');
+    }
+
     // Special logic for Wiki shortcut
     if (activity === 'wiki') {
+        // Show explorer sections since wiki is inside explorer
+        document.getElementById('section-stories').classList.remove('hidden');
+        document.getElementById('section-explorer').classList.remove('hidden');
+
         const explorerTree = document.getElementById('explorer-tree');
         if (explorerTree) {
             const wikiItem = Array.from(explorerTree.querySelectorAll('sl-tree-item')).find(item => item.dataset.name === 'wiki');
             if (wikiItem) {
                 wikiItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 wikiItem.expanded = true;
-                // Highlight or select it
                 wikiItem.selected = true;
             }
         }
-        // Ensure UI stays on explorer (since we only have one sidebar area)
         document.querySelectorAll('.activity-icon').forEach(el => el.classList.remove('active'));
         document.getElementById('nav-explorer').classList.add('active');
         document.getElementById('nav-wiki').classList.add('active');

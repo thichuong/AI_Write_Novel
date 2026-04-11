@@ -34,6 +34,9 @@ pub fn run() {
             ai::chat::ai_chat,
             ai::api_client::check_api_key,
             ai::api_client::save_api_key,
+            ai::api_client::save_settings,
+            ai::api_client::get_settings,
+            ai::api_client::list_models,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
