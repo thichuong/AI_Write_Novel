@@ -89,7 +89,7 @@ function showContextMenu(x, y, path, type, name) {
         if (action === 'new-file') showNodeModal(path, 'file');
         else if (action === 'new-folder') showNodeModal(path, 'folder');
         else if (action === 'rename') renameNodePrompt(path, name);
-        else if (action === 'delete') deleteNode(path);
+        else if (action === 'delete') deleteNode(path, name, type);
 
         menu.classList.add('hidden');
     };
@@ -144,7 +144,7 @@ export function handleRename() {
 
 export function handleDeleteBtn() {
     if (state.selectedNodePath) {
-        deleteNode(state.selectedNodePath);
+        deleteNode(state.selectedNodePath, state.selectedNodeName, state.selectedNodeType);
     } else {
         alert("Vui lòng chọn một tệp hoặc thư mục để xóa.");
     }
@@ -341,8 +341,10 @@ export function showNodeModal(parentPath, type) {
 }
 window.showNodeModal = showNodeModal;
 
-export async function deleteNode(nodePath) {
-    if (!confirm("Bạn có chắc chắn muốn xóa? Thư mục con cũng sẽ bị xóa.")) return;
+export async function deleteNode(nodePath, nodeName, nodeType) {
+    const name = nodeName || nodePath.split(/[/\\]/).pop();
+    const typeLabel = nodeType === 'folder' ? 'Thư mục' : 'File';
+    if (!confirm(`Bạn có chắc xóa ${typeLabel} ${name}`)) return;
     try {
         await fs.remove(nodePath, { recursive: true });
         if (state.currentStoryPath) {
