@@ -1,7 +1,12 @@
 use super::{run_agent_loop, AgentState};
+use crate::ai::cancellation::CancellationState;
 use crate::ai::gemini_types::{GeminiContent, GeminiPart};
+use tauri::State;
 
-pub async fn analyze_step(state: &mut AgentState) -> Result<(), String> {
+pub async fn analyze_step(
+    state: &mut AgentState,
+    cancel_state: State<'_, CancellationState>,
+) -> Result<(), String> {
     let analyze_prompt =
         "PHÂN TÍCH VÀ NẠP KIẾN THỨC:\n\
         1. Gọi `list_directory('.')` để nắm cấu trúc.\n\
@@ -17,6 +22,6 @@ pub async fn analyze_step(state: &mut AgentState) -> Result<(), String> {
         }],
     });
 
-    run_agent_loop(state, 2, "analyze").await?;
+    run_agent_loop(state, cancel_state, 2, "analyze").await?;
     Ok(())
 }

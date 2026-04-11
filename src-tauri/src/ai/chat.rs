@@ -1,19 +1,26 @@
 use super::api_client::{get_api_key, get_model};
+use super::cancellation::CancellationState;
 use super::nodes::{
     analyze::analyze_step, complete::complete_step, coordinate::coordinate_step,
-    execute::execute_step, memory::memory_step, summarize::summarize_step, run_agent_loop,
+    execute::execute_step, memory::memory_step, run_agent_loop, summarize::summarize_step,
     AgentState, AgentType,
 };
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
 
 use super::instructions::{
-    AGENT_INSTRUCTIONS, CHAT_AGENT_INSTRUCTIONS, IDEATION_AGENT_INSTRUCTIONS,
-    WIKI_GRAPH_RULES, WRITING_AGENT_INSTRUCTIONS,
+    AGENT_INSTRUCTIONS, CHAT_AGENT_INSTRUCTIONS, IDEATION_AGENT_INSTRUCTIONS, WIKI_GRAPH_RULES,
+    WRITING_AGENT_INSTRUCTIONS,
 };
+
+#[tauri::command]
+pub fn stop_ai_chat(cancel_state: State<'_, CancellationState>) {
+    cancel_state.cancel();
+}
 
 #[tauri::command]
 pub async fn ai_chat(
     app_handle: AppHandle,
+    cancel_state: State<'_, CancellationState>,
     root_path: String,
     _current_file: String,
     message: String,
@@ -36,13 +43,22 @@ pub async fn ai_chat(
     // Chuẩn bị nội dung hội thoại (lịch sử + tin nhắn mới)
     prepare_conversation_contents(&mut state, message, chat_history);
 
+    cancel_state.reset();
+
     // 2. Điều phối thông minh (Coordinator)
     // Node này có thể tự trả lời nếu câu hỏi đơn giản
     app_handle.emit("ai-agent-step", "coordinating").ok();
-    let agent_type = match coordinate_step(&mut state).await {
+    let agent_type = match coordinate_step(&mut state, cancel_state.clone()).await {
         Ok(Some(at)) => at,
-        Ok(None) => return Ok(()), // Đã trả lời trực tiếp, kết thúc.
+        Ok(None) => {
+            // Đã trả lời trực tiếp, thông báo hoàn tất toàn hệ thống
+            app_handle.emit("ai-chat-stream-done", serde_json::json!({ "phase": "complete" })).ok();
+            return Ok(());
+        }
         Err(e) => {
+            if cancel_state.is_cancelled() {
+                return Err("Agent stopped by user".to_string());
+            }
             app_handle.emit("ai-chat-stream-thought", serde_json::json!({
                 "phase": "coordinating",
                 "text": format!("⚠️ Cảnh báo: Lỗi điều phối ({e}). Chuyển sang General Agent.\n")
@@ -58,37 +74,59 @@ pub async fn ai_chat(
     match agent_type {
         AgentType::Chat => {
             app_handle.emit("ai-agent-step", "chatting").ok();
-            
+
             // Chat Agent giờ đây cũng có thể dùng Tool (Search, Read File)
-            run_agent_loop(&mut state, 3, "chat").await?;
-            
-            app_handle.emit("ai-chat-stream-done", serde_json::json!({ "phase": "chatting" })).ok();
+            run_agent_loop(&mut state, cancel_state.clone(), 3, "complete").await?;
         }
         AgentType::Ideation => {
             app_handle.emit("ai-agent-step", "analyze").ok();
-            analyze_step(&mut state).await?;
+            analyze_step(&mut state, cancel_state.clone()).await?;
 
+            if cancel_state.is_cancelled() {
+                return Err("Stopped".to_string());
+            }
             app_handle.emit("ai-agent-step", "ideate").ok();
-            execute_step(&mut state).await?;
+            execute_step(&mut state, cancel_state.clone()).await?;
 
+            if cancel_state.is_cancelled() {
+                return Err("Stopped".to_string());
+            }
             app_handle.emit("ai-agent-step", "summarize").ok();
-            summarize_step(&mut state).await?;
+            summarize_step(&mut state, cancel_state.clone()).await?;
+
+            if cancel_state.is_cancelled() {
+                return Err("Stopped".to_string());
+            }
+            app_handle.emit("ai-agent-step", "complete").ok();
+            complete_step(&mut state, cancel_state.clone()).await?;
         }
         AgentType::Writing | AgentType::General => {
             app_handle.emit("ai-agent-step", "analyze").ok();
-            analyze_step(&mut state).await?;
+            analyze_step(&mut state, cancel_state.clone()).await?;
 
+            if cancel_state.is_cancelled() {
+                return Err("Stopped".to_string());
+            }
             app_handle.emit("ai-agent-step", "execute").ok();
-            execute_step(&mut state).await?;
+            execute_step(&mut state, cancel_state.clone()).await?;
 
+            if cancel_state.is_cancelled() {
+                return Err("Stopped".to_string());
+            }
             app_handle.emit("ai-agent-step", "summarize").ok();
-            summarize_step(&mut state).await?;
+            summarize_step(&mut state, cancel_state.clone()).await?;
 
+            if cancel_state.is_cancelled() {
+                return Err("Stopped".to_string());
+            }
             app_handle.emit("ai-agent-step", "memory").ok();
-            memory_step(&mut state).await?;
+            memory_step(&mut state, cancel_state.clone()).await?;
 
+            if cancel_state.is_cancelled() {
+                return Err("Stopped".to_string());
+            }
             app_handle.emit("ai-agent-step", "complete").ok();
-            complete_step(&mut state).await?;
+            complete_step(&mut state, cancel_state.clone()).await?;
         }
     }
 

@@ -1,16 +1,26 @@
 use crate::ai::api_client::stream_gemini_response;
-use crate::ai::gemini_types::{GeminiContent, GeminiPart, GeminiRequest, GenerationConfig, ThinkingConfig};
+use crate::ai::cancellation::CancellationState;
+use crate::ai::gemini_types::{
+    GeminiContent, GeminiPart, GeminiRequest, GenerationConfig, ThinkingConfig,
+};
 use crate::ai::nodes::{AgentState, AgentType};
 use serde_json::json;
-use tauri::Emitter;
+use tauri::{Emitter, State};
 
 pub async fn coordinate_step(
     state: &mut AgentState,
+    cancel_state: State<'_, CancellationState>,
 ) -> Result<Option<AgentType>, String> {
-    state.app_handle.emit("ai-chat-stream-thought", json!({
-        "phase": "coordinating",
-        "text": "Đang phân tích yêu cầu...\n"
-    })).ok();
+    state
+        .app_handle
+        .emit(
+            "ai-chat-stream-thought",
+            json!({
+                "phase": "coordinating",
+                "text": "Đang phân tích yêu cầu...\n"
+            }),
+        )
+        .ok();
 
     let system_prompt = r#"
 BẠN LÀ AI COORDINATOR (BỘ ĐIỀU PHỐI THÔNG MINH).
@@ -60,12 +70,14 @@ VÍ DỤ:
     // Gọi AI (stream về UI)
     let parts = stream_gemini_response(
         &state.app_handle,
+        cancel_state.clone(),
         &state.api_key,
         &state.model,
         &request,
         "ai-chat-stream",
         "coordinating",
-    ).await?;
+    )
+    .await?;
 
     // Khôi phục lại system instruction
     state.system_instruction = original_instructions;
@@ -94,13 +106,22 @@ VÍ DỤ:
         };
 
         // Emit lại để UI biết đã chuyển agent
-        state.app_handle.emit("ai-agent-selected", agent_type.as_str()).ok();
+        state
+            .app_handle
+            .emit("ai-agent-selected", agent_type.as_str())
+            .ok();
 
-        state.app_handle.emit("ai-chat-stream-thought", json!({
-            "phase": "coordinating",
-            "text": format!("=> Đã điều phố tới: {}\n", agent_type.description())
-        })).ok();
-        
+        state
+            .app_handle
+            .emit(
+                "ai-chat-stream-thought",
+                json!({
+                    "phase": "coordinating",
+                    "text": format!("=> Đã điều phố tới: {}\n", agent_type.description())
+                }),
+            )
+            .ok();
+
         return Ok(Some(agent_type));
     }
 
@@ -109,6 +130,11 @@ VÍ DỤ:
         role: "model".to_string(),
         parts: parts.clone(),
     });
+
+    state
+        .app_handle
+        .emit("ai-chat-stream-done", json!({ "phase": "coordinating" }))
+        .ok();
 
     Ok(None)
 }

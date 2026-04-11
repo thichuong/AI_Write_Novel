@@ -71,7 +71,6 @@ export function setupAIListeners() {
                 state.chatHistory.push({ role: "assistant", content: finalText.trim() });
                 await saveChatHistory();
             }
-            showStatus("Ready");
         }
     });
 
@@ -122,6 +121,18 @@ export function setupAIListeners() {
 
     // Khởi tạo UI API Key
     initAPIKeyUI();
+
+    // Khởi tạo sự kiện nút gửi
+    const sendBtn = document.getElementById('send-chat-btn');
+    if (sendBtn) {
+        sendBtn.onclick = () => {
+            if (state.isAgentRunning) {
+                stopChat();
+            } else {
+                sendChat();
+            }
+        };
+    }
 }
 
 async function initAPIKeyUI() {
@@ -228,6 +239,7 @@ export async function sendChat() {
     const aiMsgDiv = addChatMessage("assistant", "");
     aiMsgDiv.classList.add('streaming');
 
+    setAgentRunning(true);
     showStatus("AI đang suy nghĩ...");
 
     try {
@@ -243,11 +255,43 @@ export async function sendChat() {
         
         const errorBox = document.createElement('div');
         errorBox.className = 'error-box';
-        errorBox.innerHTML = `<i data-lucide="alert-octagon"></i> <span><strong>Lỗi hệ thống:</strong> ${err}</span>`;
+        errorBox.innerHTML = `<i data-lucide="alert-octagon"></i> <span><strong>${err === 'Agent stopped by user' ? 'Đã dừng Agent' : 'Lỗi hệ thống:'}</strong> ${err}</span>`;
+        if (err === 'Agent stopped by user') {
+            errorBox.classList.add('stopped-info');
+        }
         aiMsgDiv.appendChild(errorBox);
         
         if (window.lucide) window.lucide.createIcons();
-        showStatus("Lỗi AI Assistant", true);
+        showStatus(err === 'Agent stopped by user' ? "Đã dừng Agent" : "Lỗi AI Assistant", true);
+    } finally {
+        setAgentRunning(false);
+    }
+}
+
+export async function stopChat() {
+    try {
+        showStatus("Đang dừng Agent...");
+        await invoke('stop_ai_chat');
+    } catch (err) {
+        console.error("Failed to stop chat:", err);
+        showStatus("Lỗi khi dừng Agent", true);
+    }
+}
+
+function setAgentRunning(isRunning) {
+    state.isAgentRunning = isRunning;
+    const sendBtn = document.getElementById('send-chat-btn');
+    if (sendBtn) {
+        if (isRunning) {
+            sendBtn.innerHTML = '<i data-lucide="square"></i>';
+            sendBtn.title = "Dừng Agent";
+            sendBtn.classList.add('running');
+        } else {
+            sendBtn.innerHTML = '<i data-lucide="send"></i>';
+            sendBtn.title = "Gửi tin nhắn";
+            sendBtn.classList.remove('running');
+        }
+        if (window.lucide) window.lucide.createIcons();
     }
 }
 

@@ -1,7 +1,12 @@
 use super::{run_agent_loop, AgentState};
+use crate::ai::cancellation::CancellationState;
 use crate::ai::gemini_types::{GeminiContent, GeminiPart};
+use tauri::State;
 
-pub async fn execute_step(state: &mut AgentState) -> Result<(), String> {
+pub async fn execute_step(
+    state: &mut AgentState,
+    cancel_state: State<'_, CancellationState>,
+) -> Result<(), String> {
     let execute_prompt =
         "THỰC HIỆN KẾ HOẠCH: Hãy sử dụng các công cụ cần thiết để hoàn thành mục tiêu.\n\
         - Bạn có thể gọi nhiều công cụ liên tục.\n\
@@ -16,6 +21,6 @@ pub async fn execute_step(state: &mut AgentState) -> Result<(), String> {
         }],
     });
 
-    run_agent_loop(state, 10, "execute").await?;
+    run_agent_loop(state, cancel_state, 10, "execute").await?;
     Ok(())
 }

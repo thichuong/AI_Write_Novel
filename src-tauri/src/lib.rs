@@ -12,6 +12,7 @@ pub fn run() {
     #[allow(clippy::large_stack_frames)]
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
+        .manage(ai::cancellation::CancellationState::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -32,6 +33,7 @@ pub fn run() {
             fs::save_chat_history,
             // AI Agent commands
             ai::chat::ai_chat,
+            ai::chat::stop_ai_chat,
             ai::api_client::check_api_key,
             ai::api_client::save_api_key,
             ai::api_client::save_settings,

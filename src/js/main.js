@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { debounce } from './utils.js';
-import { setupAIListeners, sendChat, clearChat } from './ai.js';
+import { setupAIListeners, sendChat, clearChat, stopChat } from './ai.js';
 import { handleCreateStory, handleOpenFolder, openStory, loadNodes, setupExplorerListeners, handleNewFile, handleNewFolder, handleRename, handleDeleteBtn } from './fileExplorer.js';
 import { saveActiveFile, setupEditorListeners } from './editor.js';
 import { initSettings } from './settings.js';
@@ -96,12 +96,14 @@ function setupEventListeners() {
                 if (enterSends) {
                     if (!e.shiftKey) {
                         e.preventDefault();
-                        sendChat();
+                        if (state.isAgentRunning) stopChat();
+                        else sendChat();
                     }
                 } else {
                     if (e.shiftKey) {
                         e.preventDefault();
-                        sendChat();
+                        if (state.isAgentRunning) stopChat();
+                        else sendChat();
                     }
                 }
             }

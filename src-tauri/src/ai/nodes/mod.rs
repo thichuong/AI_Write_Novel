@@ -1,12 +1,13 @@
 use crate::ai::api_client::stream_gemini_response;
-use serde::{Deserialize, Serialize};
+use crate::ai::cancellation::CancellationState;
 use crate::ai::gemini_types::{
     FunctionCallingConfig, FunctionResponseData, GeminiContent, GeminiPart, GeminiRequest,
     GenerationConfig, ThinkingConfig, ToolConfig,
 };
 use crate::ai::tools;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
 
 pub mod analyze;
 pub mod complete;
@@ -58,6 +59,7 @@ pub struct AgentState {
 /// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút
 pub async fn run_agent_loop(
     state: &mut AgentState,
+    cancel_state: State<'_, CancellationState>,
     max_local_loops: u32,
     phase: &str,
 ) -> Result<(), String> {
@@ -98,6 +100,7 @@ pub async fn run_agent_loop(
         // Stream kết quả về frontend
         let parts = stream_gemini_response(
             &state.app_handle,
+            cancel_state.clone(),
             &state.api_key,
             &state.model,
             &request,
@@ -118,7 +121,7 @@ pub async fn run_agent_loop(
         }
 
         // Xử lý Tool Calls
-        let response_parts = execute_tool_calls(state, function_calls).await;
+        let response_parts = execute_tool_calls(state, cancel_state.clone(), function_calls).await;
 
         state.contents.push(GeminiContent {
             role: "function".to_string(),
@@ -128,6 +131,12 @@ pub async fn run_agent_loop(
         // Thông báo cho UI là đã xử lý xong Tool
         state.app_handle.emit("ai-chat-stream-tool-done", ()).ok();
     }
+
+    // Thông báo toàn bộ phase đã hoàn thành
+    state
+        .app_handle
+        .emit("ai-chat-stream-done", json!({ "phase": phase }))
+        .ok();
 
     Ok(())
 }
@@ -157,10 +166,14 @@ fn process_model_parts(
 
 async fn execute_tool_calls(
     state: &AgentState,
+    cancel_state: State<'_, CancellationState>,
     function_calls: Vec<crate::ai::gemini_types::FunctionCallData>,
 ) -> Vec<GeminiPart> {
     let mut response_parts = Vec::new();
     for fc in function_calls {
+        if cancel_state.is_cancelled() {
+            break;
+        }
         let tool_result = match fc.name.as_str() {
             "list_directory" => {
                 let path = fc.args["path"].as_str().unwrap_or(".");

@@ -1,7 +1,12 @@
 use super::{run_agent_loop, AgentState};
+use crate::ai::cancellation::CancellationState;
 use crate::ai::gemini_types::{GeminiContent, GeminiPart};
+use tauri::State;
 
-pub async fn memory_step(state: &mut AgentState) -> Result<(), String> {
+pub async fn memory_step(
+    state: &mut AgentState,
+    cancel_state: State<'_, CancellationState>,
+) -> Result<(), String> {
     let memory_prompt =
         "BƯỚC CẬP NHẬT BỘ NHỚ: Hãy sử dụng công cụ `write_file` để cập nhật file `memory.md` \
         với các thông tin mới nhất về dự án, tiến độ và thay đổi trong phiên làm việc này. \
@@ -15,6 +20,6 @@ pub async fn memory_step(state: &mut AgentState) -> Result<(), String> {
         }],
     });
 
-    run_agent_loop(state, 3, "memory").await?;
+    run_agent_loop(state, cancel_state, 3, "memory").await?;
     Ok(())
 }

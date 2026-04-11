@@ -65,7 +65,10 @@ pub struct ThinkingConfig {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ToolDeclaration {
-    #[serde(rename = "functionDeclarations", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "functionDeclarations",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub function_declarations: Option<Vec<FunctionDecl>>,
     #[serde(rename = "googleSearch", skip_serializing_if = "Option::is_none")]
     pub google_search: Option<GoogleSearch>,
@@ -78,9 +81,15 @@ pub struct GoogleSearch {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ToolConfig {
-    #[serde(rename = "functionCallingConfig", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "functionCallingConfig",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub function_calling_config: Option<FunctionCallingConfig>,
-    #[serde(rename = "includeServerSideToolInvocations", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "includeServerSideToolInvocations",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub include_server_side_tool_invocations: Option<bool>,
 }
 

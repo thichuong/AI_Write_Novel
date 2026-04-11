@@ -1,7 +1,8 @@
+pub use super::cancellation::CancellationState;
 use super::gemini_types::{GeminiRequest, GeminiStreamResponse};
 use futures_util::StreamExt;
 use reqwest::Client;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
 
 /// Lấy API key từ .env
 pub fn get_api_key() -> Result<String, String> {
@@ -34,7 +35,7 @@ pub async fn list_models() -> Result<Vec<String>, String> {
 #[tauri::command]
 pub fn save_settings(api_key: String, model: String) -> Result<(), String> {
     use std::fs;
-    
+
     // 1. Lưu vào biến môi trường hiện tại
     std::env::set_var("GEMINI_API_KEY", &api_key);
     std::env::set_var("AI_MODEL", &model);
@@ -47,7 +48,10 @@ pub fn save_settings(api_key: String, model: String) -> Result<(), String> {
         String::new()
     };
 
-    let mut lines: Vec<String> = content.lines().map(std::string::ToString::to_string).collect();
+    let mut lines: Vec<String> = content
+        .lines()
+        .map(std::string::ToString::to_string)
+        .collect();
     let mut key_found = false;
     let mut model_found = false;
 
@@ -68,7 +72,8 @@ pub fn save_settings(api_key: String, model: String) -> Result<(), String> {
         lines.push(format!("AI_MODEL={model}"));
     }
 
-    fs::write(path, lines.join("\n") + "\n").map_err(|e| format!("Không thể ghi file .env: {e}"))?;
+    fs::write(path, lines.join("\n") + "\n")
+        .map_err(|e| format!("Không thể ghi file .env: {e}"))?;
 
     Ok(())
 }
@@ -86,6 +91,7 @@ pub fn get_model() -> String {
 /// Gửi request và stream response về frontend, đồng thời trả về toàn bộ các Parts đã nhận được
 pub async fn stream_gemini_response(
     app_handle: &AppHandle,
+    cancel_state: State<'_, CancellationState>,
     api_key: &str,
     model: &str,
     request: &GeminiRequest,
@@ -115,6 +121,9 @@ pub async fn stream_gemini_response(
     let mut accumulated_parts: Vec<super::gemini_types::GeminiPart> = Vec::new();
 
     while let Some(chunk_result) = stream.next().await {
+        if cancel_state.is_cancelled() {
+            return Err("Agent stopped by user".to_string());
+        }
         let chunk = chunk_result.map_err(|e| format!("Stream error: {e}"))?;
         let text = String::from_utf8_lossy(&chunk);
         buffer.push_str(&text);
@@ -198,12 +207,5 @@ pub async fn stream_gemini_response(
         }
     }
 
-    // Phát sự kiện kết thúc
-    app_handle
-        .emit(
-            &format!("{event_name}-done"),
-            serde_json::json!({ "phase": phase }),
-        )
-        .ok();
     Ok(accumulated_parts)
 }

@@ -1084,3 +1084,23 @@ sl-tree-item[data-name="wiki"] sl-icon {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+#send-chat-btn.running {
+    background: var(--sl-color-danger-600);
+    color: white;
+}
+
+#send-chat-btn.running:hover {
+    background: var(--sl-color-danger-500);
+    transform: scale(1.05);
+}
+
+.error-box.stopped-info {
+    border-color: var(--sl-color-warning-500);
+    background: rgba(var(--sl-color-warning-500-rgb), 0.1);
+    color: var(--sl-color-warning-200);
+}
+
+.error-box.stopped-info i {
+    color: var(--sl-color-warning-500);
+}

@@ -1,6 +1,4 @@
-use crate::ai::gemini_types::{
-    FunctionDecl, GoogleSearch, Schema, ToolDeclaration,
-};
+use crate::ai::gemini_types::{FunctionDecl, GoogleSearch, Schema, ToolDeclaration};
 use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -84,10 +82,7 @@ pub fn tool_write_file(
         "file-system-changed",
         json!({ "path": path, "action": "write" }),
     );
-    let _ = app_handle.emit(
-        "open-file",
-        json!({ "path": path }),
-    );
+    let _ = app_handle.emit("open-file", json!({ "path": path }));
     Ok(format!("Đã ghi thành công vào file: {path}"))
 }
 

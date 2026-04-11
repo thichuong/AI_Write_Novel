@@ -10,4 +10,5 @@ export const state = {
     selectedNodePath: null,
     selectedNodeType: null,
     selectedNodeName: null,
+    isAgentRunning: false,
 };
