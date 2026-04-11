@@ -1,88 +1,79 @@
 # AI_Write_Novel 🚀 - Trợ lý Sáng tác Truyện Thông minh
 
-Chào mừng bạn đến với **AI_Write_Novel**, một ứng dụng Desktop hỗ trợ sáng tác truyện được phát triển bằng cấu trúc **Tauri (Rust + Vanilla JS)** và tích hợp các mô hình ngôn ngữ tiên tiến nhất của Google (Gemini 3.1 Pro/Gemma). Hệ thống lưu trữ sử dụng thư mục và tệp văn bản (file-based) thay vì CSDL, giúp bạn dễ dàng quản lý theo phong cách thư mục cây chuẩn mực.
+Chào mừng bạn đến với **AI_Write_Novel**, một ứng dụng Desktop chuyên nghiệp hỗ trợ sáng tác truyện được phát triển bằng cấu trúc **Tauri (Rust + Vanilla JS)** và tích hợp các mô hình ngôn ngữ tiên tiến nhất (Gemini 2.0 Flash / Gemma). Hệ thống được thiết kế để trở thành một "đồng tác giả" thực thụ, không chỉ dừng lại ở việc gợi ý text mà còn có khả năng quản lý toàn bộ cấu trúc truyện, nhân vật và kiến thức thế giới.
 
 ---
 
 ## 🌟 Tính năng chính
 
-- **Chat Trợ lý Tác giả**: Thảo luận ý tưởng, xây dựng cốt truyện, nhân vật và bối cảnh.
-- **Agent Viết truyện tự động**: Tự động sinh nội dung chương mới.
-- **Quản lý Truyện theo Thư mục**: Truyện và các chương truyện được lưu trữ và kết xuất trực tiếp dưới dạng tệp thư mục/file gốc, thay cho SQLite, giúp kiểm soát dễ dàng.
-- **Tauri Desktop App**: Giao diện Desktop nhẹ nhàng nhưng vô cùng mạnh mẽ trong quản lý dữ liệu nhờ tốc độ của Rust Backend.
-- **Streaming Response**: Hiển thị phản hồi từ AI ngay lập tức dưới dạng stream, có hỗ trợ xem luồng "suy nghĩ" (Thinking blocks) của Gemini.
-- **Wiki Graph Knowledge Base**: Tích hợp hệ thống quản lý kiến thức truyện thông minh trong thư mục `.wiki/`.
+- **Luồng Agentic Đa bước**: AI không trả lời ngay lập tức mà tuân thủ quy trình: Phân tích yêu cầu -> Thực thi công cụ -> Tổng hợp kết quả.
+- **Tự động hóa IDE**: AI có khả năng tự động tạo, sửa và mở các chương truyện trong Editor ngay khi người dùng yêu cầu.
+- **Wiki Graph Knowledge Base**: Quản lý kiến thức nhân vật, thế giới, cốt truyện một cách logic trong thư mục `wiki/` dưới dạng Markdown với Frontmatter.
+- **Long-term Memory**: Agent duy trì bộ nhớ dài hạn thông qua tệp `memory.md`, giúp ghi nhớ các quyết định và tiến độ sáng tác.
+- **Streaming & Thought Block**: Hiển thị luồng suy nghĩ của AI (Thinking blocks) và phản hồi thời gian thực, mang lại trải nghiệm tương tác minh bạch.
+- **Quản lý API Key an toàn**: Thiết lập API Key trực tiếp qua giao diện ứng dụng, tự động lưu trữ vào cấu hình môi trường.
 
 ---
 
 ## 🏗️ Kiến trúc Hệ thống
 
-Xem chi tiết tại [architecture.md](architecture.md). Ứng dụng tuân thủ mô hình Layered Architecture:
-- **Frontend**: Vanilla JS (UI logic)
-- **Bridge**: Tauri (Commands/Events)
-- **Backend**: Rust (Agentic Core & FS Management)
+Xem chi tiết tại [architecture.md](architecture.md). Ứng dụng tuân thủ mô hình **Layered Event-Driven Architecture**:
+- **Frontend**: Vanilla JS (Phản ứng với các sự kiện từ Backend để cập nhật UI/Editor).
+- **Bridge**: Tauri Commands & Events (Cơ chế đẩy dữ liệu real-time từ Rust sang JS).
+- **Backend**: Rust Core (Điều phối Agent Loop và quản lý File System).
 
 ---
 
 ## 🛠️ Công nghệ sử dụng
 
-- **Backend / Core**: [Rust](https://www.rust-lang.org/) & [Tauri](https://tauri.app/)
-- **Frontend**: Vanilla HTML / JS / CSS
-- **Lưu trữ**: File-based (Native Rust FS Manager)
-- **AI Model**: Google Gemini API (Có hỗ trợ cho Thinking workflow)
+- **Core**: [Rust](https://www.rust-lang.org/) & [Tauri](https://tauri.app/)
+- **Frontend**: HTML / Vanilla JS / CSS (Modern Glassmorphism Design)
+- **AI Models**: Google Gemini API (Hỗ trợ Gemini 2.0 Flash, Gemma, và tính năng Google Search/Thinking)
+- **State Management**: File-based (Native Rust FS Manager)
 
 ---
 
 ## 🚀 Hướng dẫn cài đặt
 
 ### 1. Chuẩn bị môi trường
-Đảm bảo bạn đã cài đặt:
-- **Node.js**
-- **Rust & Cargo** (cài từ rustup)
-- Các công cụ C++ / WebView được Tauri yêu cầu.
+- **Node.js** (LTS recommend)
+- **Rust & Cargo**
+- Cấu hình WebView tùy theo hệ điều hành (Linux/Windows/macOS).
 
-### 2. Cài đặt thư viện
-Tại thư mục chứa dự án:
+### 2. Cài đặt và Khởi chạy
+Tại thư mục dự án:
 ```bash
 npm install
+npm run tauri dev
 ```
 
-### 3. Cấu hình
-Khóa API và các thiết lập mô hình có thể được thiết lập qua giao diện sử dụng hoặc tệp cấu hình sinh ra trong trình quản lý ứng dụng, tùy vào phiên bản ứng dụng hiện tại.
-
----
-
-## 📖 Cách sử dụng
-
-1. Khởi chạy ứng dụng phát triển:
-   ```bash
-   npm run tauri dev
-   ```
-2. Giao diện Desktop sẽ mở ra. Tại đây, hãy nhấp vào nút "Mở Truyện" hoặc khởi tạo thư mục mới để làm "Không gian viết" (Workspace).
-3. Thêm chương và tương tác cùng AI trên khung chat để sáng tác trải nghiệm.
+### 3. Thiết lập ban đầu
+- Khi ứng dụng mở ra, nếu thiếu API Key, một khung nhập liệu sẽ xuất hiện. Nhập **Gemini API Key** của bạn để bắt đầu.
+- Nhấp "Mở Truyện" hoặc chọn một thư mục trống để làm không gian làm việc.
 
 ---
 
 ## 📂 Cấu trúc dự án
 
-- `src-tauri/`: Chứa mã nguồn cho Core Rust và Tauri Configuration.
-  - `src/ai/`: Cấu trúc request đa Agent, cấu hình Gemini API (`api_client`, `gemini_types`, `tools`).
-  - `src/fs/`: Xử lý file/thư mục cứng của máy (Stories, Chapters).
-- `src/`: Giao diện ứng dụng cung cấp cho WebView (index.html, JS, CSS).
-- `.agents/`: Các quy định và kỹ năng dành cho hệ thống AI Development (mô hình nội bộ).
-- `.wiki/`: Hệ thống kiến thức nhân vật, thế giới, cốt truyện.
+- `src-tauri/`: Mã nguồn Rust Core.
+  - `src/ai/`: Agentic logic, API client và hệ thống Tools.
+  - `src/fs/`: Xử lý tệp tin và dữ liệu truyện.
+- `src/`: Mã nguồn Frontend (UI/UX).
+- `wiki/`: Cơ sở dữ liệu kiến thức (Nhân vật, Thế giới, v.v.).
+- `chapters/`: Nơi lưu trữ các chương truyện (.md).
+- `memory.md`: Nhật ký công việc và bộ nhớ của Agent.
 
 ---
 
 ## 🧩 Agentic Configuration
 
-Dự án này sử dụng mô hình Agentic để tối ưu hóa khả năng sáng tác và phát triển của AI phụ tá:
-- **Rules**: `.agents/rules/` chứa các tiêu chuẩn Code.
-- **Workflows**: `.agents/workflows/` định nghĩa các quy trình làm việc cho việc viết truyện.
-- **Skills**: `.agents/skills/` lưu trữ các kỹ năng cốt lõi:
+Hệ thống Agent được xây dựng dựa trên các quy định tại `.agents/`:
+- **Rules**: `.agents/rules/` - Tiêu chuẩn và phong cách viết code.
+- **Workflows**: `.agents/workflows/` - Quy trình làm việc tự động.
+- **Skills**: Các kỹ năng cốt lõi được tài liệu hóa:
   - [Cập nhật Tools & UI Interaction](.agents/skills/tools_ui_interaction.md)
   - [Quản lý Wiki Graph](.agents/skills/wiki_graph_agent.md)
 
 ---
 
-**Chúc bạn có những giây phút sáng tác tuyệt vời!** ✨
+**Chúc bạn có những giây phút sáng tác tuyệt vời cùng vị phụ tá AI thông minh!** ✨
