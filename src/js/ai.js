@@ -5,24 +5,26 @@ import { showStatus } from './utils.js';
 export function setupAIListeners() {
     listen('ai-agent-step', (event) => {
         const phase = event.payload;
-        getOrCreatePhaseContainer(phase);
+        getOrCreatePhaseContainer(phase, true);
     });
 
     listen('ai-chat-stream-thought', (event) => {
         const { text, phase } = event.payload;
+        // Thoughts luôn vào thoughts-section, kể cả phase complete
         const container = getOrCreatePhaseContainer(phase);
-        let thoughtBox = container.querySelector('.thinking-box');
+        if (!container) return;
+        
+        const thoughtsSection = document.querySelector('.message.assistant.streaming .thoughts-section');
+        if (thoughtsSection) thoughtsSection.classList.remove('collapsed');
+
+        const contentArea = container.querySelector('.phase-content');
+        if (!contentArea) return;
+        
+        let thoughtBox = contentArea.querySelector('.thinking-box');
         if (!thoughtBox) {
             thoughtBox = document.createElement('div');
             thoughtBox.className = 'thinking-box';
-            thoughtBox.onclick = () => {
-                if (thoughtBox.classList.contains('collapsed')) {
-                    thoughtBox.classList.remove('collapsed');
-                } else {
-                    thoughtBox.classList.add('collapsed');
-                }
-            };
-            container.appendChild(thoughtBox);
+            contentArea.appendChild(thoughtBox);
         }
         thoughtBox.innerText += text;
         const chatMessages = document.getElementById('chat-messages');
@@ -31,14 +33,41 @@ export function setupAIListeners() {
 
     listen('ai-chat-stream', (event) => {
         const { text, phase } = event.payload;
-        const container = getOrCreatePhaseContainer(phase);
-        let answerBox = container.querySelector('.answer-box');
-        if (!answerBox) {
-            answerBox = document.createElement('div');
-            answerBox.className = 'answer-box';
-            container.appendChild(answerBox);
+        const aiMsgDiv = document.querySelector('.message.assistant.streaming');
+        if (!aiMsgDiv) return;
+
+        if (phase !== 'complete') {
+            const container = getOrCreatePhaseContainer(phase);
+            if (!container) return;
+
+            const thoughtsSection = document.querySelector('.message.assistant.streaming .thoughts-section');
+            if (thoughtsSection) thoughtsSection.classList.remove('collapsed');
+
+            const contentArea = container.querySelector('.phase-content');
+            if (!contentArea) return;
+
+            let thoughtBox = contentArea.querySelector('.thinking-box');
+            if (!thoughtBox) {
+                thoughtBox = document.createElement('div');
+                thoughtBox.className = 'thinking-box';
+                contentArea.appendChild(thoughtBox);
+            }
+            thoughtBox.innerText += text;
+        } else {
+            // Answer Phase (Final Response)
+            let answerSection = aiMsgDiv.querySelector('.answer-section');
+            if (!answerSection) {
+                answerSection = document.createElement('div');
+                answerSection.className = 'answer-section';
+                const content = document.createElement('div');
+                content.className = 'answer-content';
+                answerSection.appendChild(content);
+                aiMsgDiv.appendChild(answerSection);
+            }
+            const contentArea = answerSection.querySelector('.answer-content');
+            contentArea.innerText += text;
         }
-        answerBox.innerText += text;
+        
         const chatMessages = document.getElementById('chat-messages');
         if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
     });
@@ -50,12 +79,22 @@ export function setupAIListeners() {
         const chatMessages = document.getElementById('chat-messages');
         if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // Tự động thu gọn phần suy nghĩ khi phase hoàn tất
+        // Tự động thu gọn phần suy nghĩ khi phase hoàn tất (nếu không phải complete)
         const container = document.querySelector(`.phase-container[data-phase="${phase}"]`);
-        if (container) {
-            const thoughtBox = container.querySelector('.thinking-box');
-            if (thoughtBox) {
-                thoughtBox.classList.add('collapsed');
+        if (container && phase !== 'complete') {
+            container.classList.add('collapsed');
+        }
+
+        // Khi các phase quan trọng hoàn tất, thu gọn thoughts-section để tập trung vào câu trả lời
+        if (phase === 'finalize' || phase === 'complete') {
+            const aiMsgDiv = document.querySelector('.message.assistant.streaming');
+            if (aiMsgDiv) {
+                const thoughtsSection = aiMsgDiv.querySelector('.thoughts-section');
+                if (thoughtsSection) {
+                    thoughtsSection.classList.add('collapsed');
+                    const status = thoughtsSection.querySelector('.thoughts-status');
+                    if (status) status.innerText = "Đã xong";
+                }
             }
         }
 
@@ -64,9 +103,8 @@ export function setupAIListeners() {
             const aiMsgDiv = document.querySelector('.message.assistant.streaming');
             if (aiMsgDiv) {
                 aiMsgDiv.classList.remove('streaming');
-                const allAnswerBoxes = aiMsgDiv.querySelectorAll('.answer-box');
-                let finalText = "";
-                allAnswerBoxes.forEach(box => finalText += box.innerText + "\n");
+                const answerContent = aiMsgDiv.querySelector('.answer-content');
+                let finalText = answerContent ? answerContent.innerText : "";
                 
                 state.chatHistory.push({ role: "assistant", content: finalText.trim() });
                 await saveChatHistory();
@@ -77,12 +115,19 @@ export function setupAIListeners() {
     listen('ai-chat-stream-tool', (event) => {
         const { name, args, phase } = event.payload;
         const container = getOrCreatePhaseContainer(phase);
+        if (!container) return;
         
-        let toolBox = container.querySelector('.tool-status-box');
+        const thoughtsSection = document.querySelector('.message.assistant.streaming .thoughts-section');
+        if (thoughtsSection) thoughtsSection.classList.remove('collapsed');
+
+        const contentArea = container.querySelector('.phase-content');
+        if (!contentArea) return;
+
+        let toolBox = contentArea.querySelector('.tool-status-box');
         if (!toolBox) {
             toolBox = document.createElement('div');
             toolBox.className = 'tool-status-box';
-            container.appendChild(toolBox);
+            contentArea.appendChild(toolBox);
         }
         
         let statusText = "";
@@ -181,19 +226,65 @@ async function initAPIKeyUI() {
     }
 }
 
+function getOrCreateThoughtsSection(aiMsgDiv) {
+    let thoughtsSection = aiMsgDiv.querySelector('.thoughts-section');
+    if (!thoughtsSection) {
+        thoughtsSection = document.createElement('div');
+        thoughtsSection.className = 'thoughts-section';
+        
+        const header = document.createElement('div');
+        header.className = 'thoughts-header';
+        
+        const title = document.createElement('div');
+        title.className = 'thoughts-title';
+        title.innerHTML = '<i data-lucide="brain-circuit"></i> <span>QUÁ TRÌNH SUY NGHĨ</span>';
+        
+        const status = document.createElement('div');
+        status.className = 'thoughts-status';
+        status.innerText = "Đang xử lý...";
+        
+        header.appendChild(title);
+        header.appendChild(status);
+        
+        const content = document.createElement('div');
+        content.className = 'thoughts-content';
+        
+        thoughtsSection.appendChild(header);
+        thoughtsSection.appendChild(content);
+        
+        // Chèn vào đầu tin nhắn assistant
+        aiMsgDiv.prepend(thoughtsSection);
+        
+        header.onclick = () => {
+            thoughtsSection.classList.toggle('collapsed');
+        };
+        
+        if (window.lucide) window.lucide.createIcons();
+    }
+    return thoughtsSection;
+}
+
 function getOrCreatePhaseContainer(phase) {
     const aiMsgDiv = document.querySelector('.message.assistant.streaming');
     if (!aiMsgDiv) return null;
 
-    let container = aiMsgDiv.querySelector(`.phase-container[data-phase="${phase}"]`);
+    const thoughtsSection = getOrCreateThoughtsSection(aiMsgDiv);
+    thoughtsSection.classList.remove('collapsed');
+    const thoughtsContent = thoughtsSection.querySelector('.thoughts-content');
+
+    let container = thoughtsContent.querySelector(`.phase-container[data-phase="${phase}"]`);
     if (!container) {
         container = document.createElement('div');
-        container.className = 'phase-container';
+        container.className = 'phase-container thought-node';
         container.setAttribute('data-phase', phase);
+        
+        const header = document.createElement('div');
+        header.className = 'phase-header';
         
         const badge = document.createElement('div');
         badge.className = 'agent-step-badge';
         const phaseMap = {
+            'coordinating': '🧠 Điều phối Agent',
             'routing': '🧠 Điều phối Agent',
             'chatting': '💬 Đang chuẩn bị',
             'chat': '💬 Phản hồi trực tiếp',
@@ -201,13 +292,31 @@ function getOrCreatePhaseContainer(phase) {
             'execute': '⚙️ Đang thực thi',
             'summarize': '📝 Tổng hợp diễn biến',
             'memory': '💾 Cập nhật Memory',
-            'finalize': '📝 Tổng hợp & Cập nhật Memory',
-            'complete': '✅ Hoàn tất & Phản hồi'
+            'finalize': '📝 Tổng hợp & Ghi nhớ',
+            'ideate': '💡 Đang sáng tạo',
+            'complete': '✨ Hoàn tất phản hồi'
         };
         badge.innerText = phaseMap[phase] || phase;
+        header.appendChild(badge);
+
+        const toggleIcon = document.createElement('i');
+        toggleIcon.className = 'toggle-icon';
+        toggleIcon.setAttribute('data-lucide', 'chevron-down');
+        header.appendChild(toggleIcon);
+
+        header.onclick = (e) => {
+            e.stopPropagation();
+            container.classList.toggle('collapsed');
+        };
+
+        const contentArea = document.createElement('div');
+        contentArea.className = 'phase-content';
         
-        container.appendChild(badge);
-        aiMsgDiv.appendChild(container);
+        container.appendChild(header);
+        container.appendChild(contentArea);
+        thoughtsContent.appendChild(container);
+
+        if (window.lucide) window.lucide.createIcons();
     }
     return container;
 }
@@ -340,7 +449,20 @@ export function addChatMessage(role, text) {
     
     const div = document.createElement('div');
     div.className = `message ${role === 'assistant' ? 'assistant' : 'user'}`;
-    div.innerText = text;
+    
+    if (role === 'user') {
+        div.innerText = text;
+    } else if (text) {
+        // Nếu có text sẵn (ví dụ load từ history), tạo luôn answer-section
+        const answerSection = document.createElement('div');
+        answerSection.className = 'answer-section';
+        const content = document.createElement('div');
+        content.className = 'answer-content';
+        content.innerText = text;
+        answerSection.appendChild(content);
+        div.appendChild(answerSection);
+    }
+    
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     return div;

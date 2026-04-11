@@ -532,8 +532,13 @@ sl-tree-item[data-name="wiki"] sl-icon {
 
 .message.assistant {
     align-self: flex-start;
-    background-color: var(--bg-accent);
-    border: 1px solid var(--border-color);
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    max-width: 95%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .chat-input-container {
@@ -771,49 +776,106 @@ sl-tree-item[data-name="wiki"] sl-icon {
     color: white;
 }
 
-.thinking-box {
-    font-size: 0.85rem;
-    font-style: italic;
-    color: var(--text-dim);
-    border-left: 2px solid var(--accent-color);
-    padding: 8px 12px;
-    margin: 8px 0;
-    white-space: pre-wrap;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
-    line-height: 1.6;
+/* New Hierarchical Thoughts Section */
+.thoughts-section {
+    background: rgba(15, 17, 20, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     overflow: hidden;
-    transition: max-height 0.3s ease-in-out, padding 0.3s;
-    max-height: 1000px;
-    /* Large enough to show full content by default */
-    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 4px;
+    backdrop-filter: blur(8px);
 }
 
-.thinking-box.collapsed {
-    max-height: 42px;
-    /* Approx 1.5 lines */
+.thoughts-section.collapsed {
+    background: rgba(15, 17, 20, 0.2);
+}
+
+.thoughts-header {
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
-    padding-bottom: 4px;
+    background: rgba(255, 255, 255, 0.02);
+    user-select: none;
+    border-bottom: 1px solid transparent;
 }
 
-.thinking-box.collapsed::after {
-    content: "Click to expand...";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 20px;
-    background: linear-gradient(transparent, rgba(15, 20, 25, 0.9));
-    color: var(--accent-color);
-    font-size: 0.7rem;
+.thoughts-section:not(.collapsed) .thoughts-header {
+    border-bottom-color: var(--border-color);
+}
+
+.thoughts-title {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 10px;
+    font-size: 0.8rem;
     font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.02rem;
 }
 
-.thinking-box:hover.collapsed {
-    background: rgba(99, 102, 241, 0.1);
+.thoughts-title i {
+    width: 14px;
+    height: 14px;
+    color: var(--accent-color);
+}
+
+.thoughts-status {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-weight: 400;
+}
+
+.thoughts-content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.thoughts-section.collapsed .thoughts-content {
+    display: none;
+}
+
+/* Answer Section */
+.answer-section {
+    background: var(--bg-accent);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 20px;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.answer-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-color), transparent);
+    border-radius: 12px 12px 0 0;
+    opacity: 0.5;
+}
+
+.answer-content {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+.thinking-box {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding: 6px 0;
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.6;
 }
 
 .answer-box {
@@ -822,29 +884,77 @@ sl-tree-item[data-name="wiki"] sl-icon {
     font-size: 0.95rem;
 }
 
-.phase-container {
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.phase-container:last-child {
-    margin-bottom: 0;
-    border-bottom: none;
-}
-
 .agent-step-badge {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 600;
     color: var(--text-secondary);
-    background: var(--bg-accent);
-    padding: 3px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
     border-radius: 4px;
-    margin-bottom: 10px;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     border: 1px solid var(--border-color);
     text-transform: uppercase;
     letter-spacing: 0.05rem;
+}
+
+.phase-container {
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+
+.phase-container.thought-node {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.phase-header {
+    padding: 6px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.phase-header:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.phase-header .toggle-icon {
+    font-size: 10px;
+    color: var(--text-dim);
+    transition: transform 0.2s ease;
+}
+
+.phase-container.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.phase-content {
+    padding: 0 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.phase-container.collapsed .phase-content {
+    display: none;
+}
+
+/* Tool badge within phase */
+.tool-status-box {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin: 2px 0;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .tool-status-box {

@@ -139,7 +139,15 @@ fn handle_coordinate_response(
 
             state
                 .app_handle
-                .emit("ai-chat-stream-done", json!({ "phase": "coordinating" }))
+                .emit(
+                    "ai-chat-stream",
+                    json!({ "text": explanation, "phase": "complete" }),
+                )
+                .ok();
+
+            state
+                .app_handle
+                .emit("ai-chat-stream-done", json!({ "phase": "complete" }))
                 .ok();
 
             return None;

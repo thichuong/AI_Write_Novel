@@ -81,6 +81,20 @@ pub async fn run_agent_loop(
         include_server_side_tool_invocations: Some(true),
     };
 
+    // Thông báo bắt đầu Phase để UI hiển thị box trống nếu chưa có gì
+    if phase != "complete" {
+        state
+            .app_handle
+            .emit(
+                "ai-chat-stream-thought",
+                json!({
+                    "phase": phase,
+                    "text": format!("Đang thực hiện bước: {}...\n", phase)
+                }),
+            )
+            .ok();
+    }
+
     let mut local_loops = 0;
     loop {
         local_loops += 1;
