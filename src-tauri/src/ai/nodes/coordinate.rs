@@ -83,28 +83,7 @@ VÍ DỤ:
     state.system_instruction = original_instructions;
 
     // Phân tích kết quả để tìm token ROUTE
-    let mut full_text = String::new();
-    for part in &parts {
-        if let GeminiPart::Text { text } = part {
-            full_text.push_str(text);
-        }
-    }
-
-    if let Some(pos) = full_text.find("[ROUTE:") {
-        let route_part = &full_text[pos..];
-        let agent_str = route_part
-            .strip_prefix("[ROUTE:")
-            .and_then(|s| s.split(']').next())
-            .map(|s| s.trim())
-            .unwrap_or("general");
-
-        let agent_type = match agent_str {
-            "chat" => AgentType::Chat,
-            "ideation" => AgentType::Ideation,
-            "writing" => AgentType::Writing,
-            _ => AgentType::General,
-        };
-
+    if let Some(agent_type) = parse_route_token(&parts) {
         // Emit lại để UI biết đã chuyển agent
         state
             .app_handle
@@ -117,7 +96,7 @@ VÍ DỤ:
                 "ai-chat-stream-thought",
                 json!({
                     "phase": "coordinating",
-                    "text": format!("=> Đã điều phố tới: {}\n", agent_type.description())
+                    "text": format!("=> Đã điều phối tới: {}\n", agent_type.description())
                 }),
             )
             .ok();
@@ -128,7 +107,7 @@ VÍ DỤ:
     // Nếu không có ROUTE token, coi như đã trả lời xong trực tiếp
     state.contents.push(GeminiContent {
         role: "model".to_string(),
-        parts: parts.clone(),
+        parts,
     });
 
     state
@@ -137,4 +116,27 @@ VÍ DỤ:
         .ok();
 
     Ok(None)
+}
+
+fn parse_route_token(parts: &[GeminiPart]) -> Option<AgentType> {
+    let mut full_text = String::new();
+    for part in parts {
+        if let GeminiPart::Text { text } = part {
+            full_text.push_str(text);
+        }
+    }
+
+    let pos = full_text.find("[ROUTE:")?;
+    let route_part = &full_text[pos..];
+    let agent_str = route_part
+        .strip_prefix("[ROUTE:")
+        .and_then(|s| s.split(']').next())
+        .map_or("general", str::trim);
+
+    Some(match agent_str {
+        "chat" => AgentType::Chat,
+        "ideation" => AgentType::Ideation,
+        "writing" => AgentType::Writing,
+        _ => AgentType::General,
+    })
 }

@@ -52,7 +52,12 @@ pub async fn ai_chat(
         Ok(Some(at)) => at,
         Ok(None) => {
             // Đã trả lời trực tiếp, thông báo hoàn tất toàn hệ thống
-            app_handle.emit("ai-chat-stream-done", serde_json::json!({ "phase": "complete" })).ok();
+            app_handle
+                .emit(
+                    "ai-chat-stream-done",
+                    serde_json::json!({ "phase": "complete" }),
+                )
+                .ok();
             return Ok(());
         }
         Err(e) => {

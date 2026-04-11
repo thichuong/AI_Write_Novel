@@ -25,7 +25,7 @@ pub enum AgentType {
 }
 
 impl AgentType {
-    pub const fn as_str(&self) -> &'static str {
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Chat => "chat",
             Self::Ideation => "ideation",
@@ -34,7 +34,7 @@ impl AgentType {
         }
     }
 
-    pub const fn description(&self) -> &'static str {
+    pub const fn description(self) -> &'static str {
         match self {
             Self::Chat => "Chat Agent (Trò chuyện & Tìm kiếm)",
             Self::Ideation => "Ideation Agent (Lên ý tưởng)",
@@ -121,7 +121,7 @@ pub async fn run_agent_loop(
         }
 
         // Xử lý Tool Calls
-        let response_parts = execute_tool_calls(state, cancel_state.clone(), function_calls).await;
+        let response_parts = execute_tool_calls(state, cancel_state.clone(), function_calls);
 
         state.contents.push(GeminiContent {
             role: "function".to_string(),
@@ -164,7 +164,7 @@ fn process_model_parts(
     (function_calls, has_text_done)
 }
 
-async fn execute_tool_calls(
+fn execute_tool_calls(
     state: &AgentState,
     cancel_state: State<'_, CancellationState>,
     function_calls: Vec<crate::ai::gemini_types::FunctionCallData>,
