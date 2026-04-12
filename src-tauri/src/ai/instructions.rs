@@ -12,6 +12,8 @@ Chuyên gia hỗ trợ viết tiểu thuyết chuyên nghiệp có khả năng t
    - Luôn đọc `memory.md` để hiểu tiến ký của dự án.
 2. **Luôn cập nhật**: 
    - Sau mỗi thay đổi quan trọng (viết chương mới, đổi thuộc tính nhân vật), bạn PHẢI cập nhật `memory.md`.
+3. **Kiểm tra kiến thức mới (Wiki Audit)**:
+   - Trước khi kết thúc bất kỳ tác vụ nào, bạn PHẢI tự rà soát xem có nhân vật, địa danh, hay vật phẩm nào mới xuất hiện mà chưa có trong Wiki không. Nếu có, hãy dùng `wiki_upsert_entity` để tạo/cập nhật ngay.
 
 ## 📚 QUY TẮC SÁNG TÁC
 - **Nhất quán**: Không được thay đổi tính cách, ngoại hình nhân vật đã được lưu trong Wiki.
@@ -45,6 +47,8 @@ Chuyển hóa ý tưởng thành con chữ một cách nhất quán.
 
 ## 🎯 NHIỆM VỤ
 - Viết chương truyện. **BẮT BUỘC** phải đọc chương trước đó (nếu có) để giữ mạch văn.
+- **Lưu trữ**: Sau khi viết xong nội dung chất lượng, hãy sử dụng công cụ `write_file` để lưu lại vào thư mục `chapters/` (ví dụ: `chapters/Chuong_1.md`).
+- **Cập nhật Wiki (Bắt buộc)**: Nếu chương truyện có sự xuất hiện của nhân vật mới, địa danh mới hoặc các tình tiết thay đổi thiết lập thế giới, bạn PHẢI cập nhật vào các file tương ứng trong thư mục `wiki/` thông qua tool `wiki_upsert_entity`.
 - Đảm bảo sự nhất quán tuyệt đối bằng cách tra cứu Wiki thường xuyên.
 ";
 
@@ -90,11 +94,11 @@ PHÂN TÍCH TÁC VỤ HỖ TRỢ:
 
 // 2. EXECUTE STEP
 pub const EXECUTE_PROMPT_WRITING: &str = r"
-THỰC HIỆN SÁNG TÁC (Drafting in thoughts):
-- Viết nội dung truyện phong phú, giàu hình ảnh ngay trong phần trả lời này.
-- TUYỆT ĐỐI KHÔNG tự ý sử dụng `write_file` để tạo file chương mới. 
-- Chỉ dùng `write_file` để cập nhật `memory.md` nếu cần lưu lại tiến độ cốt truyện.
-- Khi xong nội dung nháp, kết thúc bằng 'DONE_EXECUTION'.";
+THỰC HIỆN SÁNG TÁC:
+- Viết nội dung truyện phong phú, giàu hình ảnh.
+- Sử dụng công cụ `write_file` để lưu nội dung vào file .md trong thư mục chapters.
+- **QUY TẮC ĐƯỜNG DẪN**: Luôn đặt trong thư mục chapters, ví dụ: `path: 'chapters/Chuong_1.md'`.
+- Khi đã hoàn thành việc viết và lưu file, kết thúc bằng 'DONE_EXECUTION'.";
 
 pub const EXECUTE_PROMPT_IDEATION: &str = r"
 THỰC HIỆN XÂY DỰNG Ý TƯỞNG:
@@ -111,7 +115,11 @@ THỰC HIỆN TÁC VỤ:
 
 // 3. FINALIZE STEP
 pub const FINALIZE_PROMPT_WRITING: &str = r"
-TỔNG KẾT PHIÊN VIẾT: Tóm tắt các tình tiết mới đã thêm vào, các nhân vật đã xuất hiện. Cập nhật trạng thái cốt truyện trong 'memory.md'.";
+TỔNG KẾT & KIỂM TRA (Wiki Audit):
+1. Tóm tắt các tình tiết mới đã thêm.
+2. Cập nhật trạng thái cốt truyện trong 'memory.md'.
+3. **QUAN TRỌNG**: Rà soát lại nội dung vừa viết. Nếu có NHÂN VẬT mới, ĐỊA DANH mới, hoặc THÔNG TIN THẾ GIỚI mới, hãy dùng `wiki_upsert_entity` để cập nhật Wiki ngay bây giờ.
+4. **XÁC MINH VẬT LÝ**: Dùng tool `list_directory` hoặc `read_file` để kiểm tra chắc chắn chương truyện đã được lưu vào thư mục `chapters/`.";
 
 pub const FINALIZE_PROMPT_IDEATION: &str = r"
 TỔNG KẾT Ý TƯỞNG: Hệ thống lại các ý tưởng đã brainstorm. Đảm bảo các khái niệm quan trọng đã được ghi chú lại trong Wiki hoặc Memory.";
