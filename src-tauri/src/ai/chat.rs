@@ -2,7 +2,8 @@ use super::api_client::{get_api_key, get_model};
 use super::cancellation::CancellationState;
 use super::nodes::{
     analyze::analyze_step, complete::complete_step, coordinate::coordinate_step,
-    execute::execute_step, finalize::finalize_step, run_agent_loop, AgentState, AgentType,
+    execute::execute_step, finalize::finalize_step, run_agent_loop, thinking::thinking_step,
+    AgentState, AgentType,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -83,56 +84,14 @@ pub async fn ai_chat(
     match agent_type {
         AgentType::Chat => {
             app_handle.emit("ai-agent-step", "chatting").ok();
-
             // Chat Agent giờ đây cũng có thể dùng Tool (Search, Read File)
-            run_agent_loop(&mut state, cancel_state.clone(), 3, "complete").await?;
+            run_agent_loop(&mut state, cancel_state.clone(), 3, "complete", true).await?;
         }
         AgentType::Ideation => {
-            app_handle.emit("ai-agent-step", "analyze").ok();
-            analyze_step(&mut state, cancel_state.clone()).await?;
-
-            if cancel_state.is_cancelled() {
-                return Err("Stopped".to_string());
-            }
-            app_handle.emit("ai-agent-step", "ideate").ok();
-            execute_step(&mut state, cancel_state.clone()).await?;
-
-            if cancel_state.is_cancelled() {
-                return Err("Stopped".to_string());
-            }
-            app_handle.emit("ai-agent-step", "finalize").ok();
-            finalize_step(&mut state, cancel_state.clone()).await?;
-
-            if cancel_state.is_cancelled() {
-                return Err("Stopped".to_string());
-            }
-            app_handle.emit("ai-agent-step", "complete").ok();
-            complete_step(&mut state, cancel_state.clone()).await?;
+            run_standard_agent_flow(&mut state, cancel_state, false).await?;
         }
         AgentType::Writing | AgentType::General => {
-            app_handle.emit("ai-agent-step", "analyze").ok();
-            analyze_step(&mut state, cancel_state.clone()).await?;
-            super::nodes::prune_history(&mut state.contents);
-
-            if cancel_state.is_cancelled() {
-                return Err("Stopped".to_string());
-            }
-            app_handle.emit("ai-agent-step", "execute").ok();
-            execute_step(&mut state, cancel_state.clone()).await?;
-            super::nodes::prune_history(&mut state.contents);
-
-            if cancel_state.is_cancelled() {
-                return Err("Stopped".to_string());
-            }
-            app_handle.emit("ai-agent-step", "finalize").ok();
-            finalize_step(&mut state, cancel_state.clone()).await?;
-            super::nodes::prune_history(&mut state.contents);
-
-            if cancel_state.is_cancelled() {
-                return Err("Stopped".to_string());
-            }
-            app_handle.emit("ai-agent-step", "complete").ok();
-            complete_step(&mut state, cancel_state.clone()).await?;
+            run_standard_agent_flow(&mut state, cancel_state, true).await?;
         }
     }
 
@@ -186,4 +145,58 @@ fn apply_agent_instructions(state: &mut AgentState, agent_type: AgentType) {
             text: system_instructions,
         }],
     });
+}
+
+async fn run_standard_agent_flow(
+    state: &mut AgentState,
+    cancel_state: State<'_, CancellationState>,
+    with_pruning: bool,
+) -> Result<(), String> {
+    let app_handle = state.app_handle.clone();
+
+    // 1. Analyze
+    app_handle.emit("ai-agent-step", "analyze").ok();
+    analyze_step(state, cancel_state.clone()).await?;
+    if with_pruning {
+        super::nodes::prune_history(&mut state.contents);
+    }
+    if cancel_state.is_cancelled() {
+        return Err("Stopped".to_string());
+    }
+
+    // 2. Thinking
+    app_handle.emit("ai-agent-step", "thinking").ok();
+    thinking_step(state, cancel_state.clone()).await?;
+    if with_pruning {
+        super::nodes::prune_history(&mut state.contents);
+    }
+    if cancel_state.is_cancelled() {
+        return Err("Stopped".to_string());
+    }
+
+    // 3. Execute
+    app_handle.emit("ai-agent-step", "execute").ok();
+    execute_step(state, cancel_state.clone()).await?;
+    if with_pruning {
+        super::nodes::prune_history(&mut state.contents);
+    }
+    if cancel_state.is_cancelled() {
+        return Err("Stopped".to_string());
+    }
+
+    // 4. Finalize
+    app_handle.emit("ai-agent-step", "finalize").ok();
+    finalize_step(state, cancel_state.clone()).await?;
+    if with_pruning {
+        super::nodes::prune_history(&mut state.contents);
+    }
+    if cancel_state.is_cancelled() {
+        return Err("Stopped".to_string());
+    }
+
+    // 5. Complete
+    app_handle.emit("ai-agent-step", "complete").ok();
+    complete_step(state, cancel_state.clone()).await?;
+
+    Ok(())
 }

@@ -33,6 +33,7 @@ pub async fn complete_step(
         }],
     });
 
-    run_agent_loop(state, cancel_state, 1, "complete").await?;
+    // Bước cuối cùng - Cho phép dùng tool nếu AI muốn giải thích thêm gì đó, hoặc không.
+    run_agent_loop(state, cancel_state, 1, "complete", true).await?;
     Ok(())
 }

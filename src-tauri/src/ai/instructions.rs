@@ -99,71 +99,105 @@ BẮT BUỘC TRẢ VỀ JSON:
     "plan": ["Bước 1: ...", "Bước 2: ..."]
 }"#;
 
-// 2. EXECUTE STEP
-pub const EXECUTE_PROMPT_WRITING: &str = r#"
-THỰC HIỆN SÁNG TÁC:
+// 2. THINKING STEP (Sáng tác & Lên ý tưởng - KHÔNG DÙNG TOOL)
+pub const THINKING_PROMPT_WRITING: &str = r#"
+BẮT ĐẦU SÁNG TÁC (Tập trung toàn bộ vào nội dung):
+Hãy viết nội dung chi tiết dựa trên kế hoạch và bối cảnh.
+LƯU Ý: Bước này KHÔNG được gọi tool. Chỉ trả về JSON nội dung.
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Tình tiết chính sẽ viết trong chương này",
+    "thought_process": "Suy nghĩ chi tiết về tình tiết",
     "chapter_content": "Nội dung chương truyện (Markdown)...",
     "suggested_filename": "chapters/Chuong_X.md"
 }"#;
 
-pub const EXECUTE_PROMPT_IDEATION: &str = r#"
-THỰC HIỆN XÂY DỰNG Ý TƯỞNG:
+pub const THINKING_PROMPT_IDEATION: &str = r#"
+PHÁT TRIỂN Ý TƯỞNG (KHÔNG DÙNG TOOL):
+Hãy phát triển các ý tưởng chi tiết dựa trên phân tích.
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Cách tiếp cận các phương án sáng tạo",
+    "thought_process": "Lập luận về các hướng đi",
     "ideas": [
         {"title": "Ý tưởng 1", "content": "Chi tiết..."},
         {"title": "Ý tưởng 2", "content": "Chi tiết..."}
     ],
-    "recommendation": "Phương án tốt nhất và lý do"
+    "recommendation": "Phương án tốt nhất"
+}"#;
+
+pub const THINKING_PROMPT_GENERAL: &str = r#"
+XỬ LÝ YÊU CẦU (KHÔNG DÙNG TOOL):
+Thực hiện các bước suy luận hoặc soạn thảo văn bản cần thiết.
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Các bước suy luận",
+    "result": "Nội dung đã soạn thảo hoặc kết quả suy luận"
+}"#;
+
+// 3. EXECUTE STEP (Thực thi: Cập nhật Wiki - ĐƯỢC DÙNG TOOL)
+pub const EXECUTE_PROMPT_WRITING: &str = r#"
+CẬP NHẬT WIKI & HỆ THỐNG:
+Hệ thống đã tự động lưu chương truyện. Nhiệm vụ của bạn bây giờ là:
+1. Rà soát nội dung vừa viết và dùng `wiki_upsert_entity` nếu có nhân vật/địa danh mới xuất hiện.
+2. Trả về JSON xác nhận.
+
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Rà soát các thực thể cần cập nhật Wiki",
+    "actions_taken": ["Đã cập nhật Wiki nhân vật A..."],
+    "wiki_updates_count": 0
+}"#;
+
+pub const EXECUTE_PROMPT_IDEATION: &str = r#"
+CẬP NHẬT KIẾN THỨC Ý TƯỞNG:
+Dựa trên các ý tưởng đã chọn, hãy dùng `wiki_upsert_entity` để lưu lại các thiết lập quan trọng vào Wiki Plot hoặc Lore.
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Xác định các điểm mấu chốt cần lưu",
+    "actions_taken": ["Đã cập nhật Wiki..."]
 }"#;
 
 pub const EXECUTE_PROMPT_GENERAL: &str = r#"
-THỰC HIỆN TÁC VỤ:
-BẮT BUỘC TRẢ VỀ JSON (Nếu có nội dung cần lưu, hãy dùng tool trực tiếp trước khi trả về JSON này):
-{
-    "thought_process": "Các bước đã thực hiện",
-    "result": "Kết quả cuối cùng của tác vụ",
-    "next_steps": "Các lưu ý cho bước tổng kết"
-}"#;
-
-// 3. FINALIZE STEP
-pub const FINALIZE_PROMPT_WRITING: &str = r#"
-TỔNG KẾT & KIỂM TRA (Wiki Audit):
-Dựa trên nội dung vừa viết ở bước trước, hãy thực hiện tổng kết.
+HOÀN TẤT THỰC THI KIẾN THỨC:
+Hệ thống đã lưu kết quả văn bản. Sử dụng các công cụ cần thiết (wiki) để đồng bộ kiến thức nếu có thay đổi quan trọng.
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Rà soát lại sự nhất quán của chương vừa viết",
-    "summary": "Tóm tắt ngắn gọn nội dung chương (100 chữ)",
-    "wiki_updates": [
-        {"name": "Tên thực thể mới/cần cập nhật", "type": "Character|Location|Item", "description": "Mô tả mới", "tags": ["tag"]}
-    ],
-    "memory_updates": "Tiến trình mới cần ghi vào memory.md (ví dụ: Đã hoàn thành chương 14, nhân vật A bị thương)"
+    "thought_process": "Kiểm tra kết quả thực thi",
+    "status": "success/failure"
+}"#;
+
+// 4. FINALIZE STEP (Tóm tắt dự án - KHÔNG DÙNG TOOL)
+pub const FINALIZE_PROMPT_WRITING: &str = r#"
+TÓM TẮT TRẠNG THÁI DỰ ÁN (Memory Summary):
+Hãy nhìn lại toàn bộ quá trình và cung cấp một bản tóm tắt mới nhất cho `memory.md`.
+Bản tóm tắt này giúp agent tiếp theo hiểu nhanh tiến độ, các nhân vật đang ở đâu, và mục tiêu tiếp theo là gì.
+LƯU Ý: Bước này KHÔNG được gọi tool.
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Đánh giá các sự kiện quan trọng nhất vừa diễn ra",
+    "project_summary": "Nội dung tóm tắt dự án mới nhất (Markdown)..."
 }"#;
 
 pub const FINALIZE_PROMPT_IDEATION: &str = r#"
-TỔNG KẾT Ý TƯỞNG:
+HỆ THỐNG LẠI Ý TƯỞNG (Memory Summary):
+Hãy tóm tắt lại các ý tưởng chính đã được thống nhất để lưu vào `memory.md`.
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Đánh giá khả năng triển khai các ý tưởng",
-    "summary": "Hệ thống lại các ý tưởng tâm đắc nhất",
-    "memory_updates": "Các ý tưởng cần lưu lại vào memory.md để tham khảo sau"
+    "thought_process": "Chọn lọc các ý tưởng tiềm năng nhất",
+    "project_summary": "Bản tóm tắt các ý tưởng và hướng phát triển (Markdown)..."
 }"#;
 
 pub const FINALIZE_PROMPT_GENERAL: &str = r#"
-TỔNG KẾT & CẬP NHẬT:
+TÓM TẮT CÔNG VIỆC (Memory Summary):
+Hãy tóm tắt lại kết quả công việc và trạng thái hiện tại của dự án.
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Kiểm tra lại kết quả công việc",
-    "summary": "Tóm tắt các hành động đã thực hiện",
-    "memory_updates": "Cập nhật trạng thái dự án vào memory.md"
+    "thought_process": "Rà soát kết kết quả tác vụ",
+    "project_summary": "Bản tóm tắt trạng thái dự án (Markdown)..."
 }"#;
 
-// 4. COMPLETE STEP
-pub const COMPLETE_PROMPT_WRITING: &str = "HOÀN TẤT: Thông báo cho tác giả rằng chương truyện đã được xử lý xong và mời họ tiếp tục.";
-pub const COMPLETE_PROMPT_IDEATION: &str = "HOÀN TẤT: Giới thiệu các ý tưởng và hỏi xem người dùng muốn chọn hướng nào.";
+// 5. COMPLETE STEP
+pub const COMPLETE_PROMPT_WRITING: &str =
+    "HOÀN TẤT: Thông báo cho tác giả rằng chương truyện đã được xử lý xong và mời họ tiếp tục.";
+pub const COMPLETE_PROMPT_IDEATION: &str =
+    "HOÀN TẤT: Giới thiệu các ý tưởng và hỏi xem người dùng muốn chọn hướng nào.";
 pub const COMPLETE_PROMPT_GENERAL: &str = "HOÀN TẤT: Xác nhận công việc đã hoàn thành.";
-

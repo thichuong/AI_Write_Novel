@@ -1,10 +1,9 @@
-use crate::ai::api_client::stream_gemini_response;
 use crate::ai::cancellation::CancellationState;
-use crate::ai::gemini_types::{GeminiContent, GeminiPart, GeminiRequest, GenerationConfig};
+use crate::ai::gemini_types::{GeminiContent, GeminiPart};
 use crate::ai::instructions::{
     ANALYZE_PROMPT_GENERAL, ANALYZE_PROMPT_IDEATION, ANALYZE_PROMPT_WRITING,
 };
-use crate::ai::nodes::{AgentState, AgentType};
+use crate::ai::nodes::{run_agent_loop, AgentState, AgentType};
 use crate::ai::tools::{tool_list_directory, tool_read_file, tool_wiki_list_entities};
 use serde_json::json;
 use tauri::{Emitter, State};
@@ -13,7 +12,7 @@ pub async fn analyze_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
 ) -> Result<(), String> {
-    // 1. Thu thập tri thức tự động từ backend
+    // 1. Thu thập tri thức tự động từ backend (Trước khi AI chạy để giảm số lượt gọi tool)
     let dir_context =
         tool_list_directory(&state.root_path, ".").unwrap_or_else(|e| format!("Lỗi liệt kê: {e}"));
     let memory_context = tool_read_file(&state.root_path, "memory.md")
@@ -32,7 +31,8 @@ pub async fn analyze_step(
         {agent_specific_guidance}\n\n\
         ### CẤU TRÚC THƯ MỤC:\n{dir_context}\n\n\
         ### NỘI DUNG MEMORY.MD:\n{memory_context}\n\n\
-        ### DANH SÁCH WIKI:\n{wiki_context}\n"
+        ### DANH SÁCH WIKI:\n{wiki_context}\n\n\
+        HÀNH ĐỘNG: Nếu cần tìm hiểu thêm thông tin thực tế để viết, hãy dùng `google_search` hoặc `read_file`."
     );
 
     state.contents.push(GeminiContent {
@@ -48,54 +48,26 @@ pub async fn analyze_step(
             "ai-chat-stream-thought",
             json!({
                 "phase": "analyze",
-                "text": "Đang phân tích bối cảnh dự án (JSON Mode)...\n"
+                "text": "Đang phân tích bối cảnh và nghiên cứu dữ liệu (Tool-enabled)...\n"
             }),
         )
         .ok();
 
-    let request = GeminiRequest {
-        contents: state.contents.clone(),
-        system_instruction: state.system_instruction.clone(),
-        generation_config: Some(GenerationConfig {
-            temperature: 0.2,
-            max_output_tokens: 2048,
-            thinking_config: None,
-            response_mime_type: Some("application/json".to_string()),
-            response_schema: None,
-        }),
-        tools: None,
-        tool_config: None,
-    };
+    // Dùng run_agent_loop để hỗ trợ Tool calling (Search, Read File) trong bước Analyze
+    run_agent_loop(state, cancel_state, 3, "analyze", true).await?;
 
-    let parts = stream_gemini_response(
-        &state.app_handle,
-        cancel_state.clone(),
-        &state.api_key,
-        &state.model,
-        &request,
-        "ai-chat-stream",
-        "analyze",
-    )
-    .await?;
-
-    state.contents.push(GeminiContent {
-        role: "model".to_string(),
-        parts: parts.clone(),
-    });
-
-    process_analyze_response(state, &parts)?;
-
-    state
-        .app_handle
-        .emit("ai-chat-stream-done", json!({ "phase": "analyze" }))
-        .ok();
+    process_analyze_feedback(state);
 
     Ok(())
 }
 
-fn process_analyze_response(state: &AgentState, parts: &[GeminiPart]) -> Result<(), String> {
-    // Trích xuất text từ kết quả
-    let full_text = parts
+fn process_analyze_feedback(state: &AgentState) {
+    let Some(last_msg) = state.contents.last() else {
+        return;
+    };
+
+    let full_text = last_msg
+        .parts
         .iter()
         .filter_map(|p| {
             if let GeminiPart::Text { text } = p {
@@ -106,37 +78,30 @@ fn process_analyze_response(state: &AgentState, parts: &[GeminiPart]) -> Result<
         })
         .collect::<String>();
 
-    // Xử lý Robust JSON
-    let json_text = crate::ai::nodes::extract_json_block(&full_text).ok_or_else(|| {
-        format!("AI không trả về khối JSON Analyze hợp lệ. Nội dung gốc: {full_text}")
-    })?;
+    if let Some(json_text) = crate::ai::nodes::extract_json_block(&full_text) {
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_text) {
+            let thought = parsed["thought_process"].as_str().unwrap_or("");
+            let status = parsed["status_check"].as_str().unwrap_or("");
+            let plan = parsed["plan"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .map(|v| format!("• {}", v.as_str().unwrap_or("-")))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                })
+                .unwrap_or_default();
 
-    let parsed_json: serde_json::Value =
-        serde_json::from_str(&json_text).map_err(|e| format!("Lỗi parse JSON Analyze: {e}"))?;
-
-    let thought = parsed_json["thought_process"].as_str().unwrap_or("");
-    let status = parsed_json["status_check"].as_str().unwrap_or("");
-    let plan = parsed_json["plan"]
-        .as_array()
-        .map(|a| {
-            a.iter()
-                .map(|v| format!("• {}", v.as_str().unwrap_or("-")))
-                .collect::<Vec<_>>()
-                .join("\n")
-        })
-        .unwrap_or_default();
-
-    // Hiển thị Plan lên UI
-    state
-        .app_handle
-        .emit(
-            "ai-chat-stream-thought",
-            json!({
-                "phase": "analyze",
-                "text": format!("\n💡 **Phân tích**: {thought}\n🧐 **Đánh giá**: {status}\n\n📋 **Kế hoạch hành động**:\n{plan}\n")
-            }),
-        )
-        .ok();
-
-    Ok(())
+            state
+                .app_handle
+                .emit(
+                    "ai-chat-stream-thought",
+                    json!({
+                        "phase": "analyze",
+                        "text": format!("\n💡 **Phân tích**: {thought}\n🧐 **Đánh giá**: {status}\n\n📋 **Kế hoạch hành động**:\n{plan}\n")
+                    }),
+                )
+                .ok();
+        }
+    }
 }

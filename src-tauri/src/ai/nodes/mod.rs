@@ -14,6 +14,7 @@ pub mod complete;
 pub mod coordinate;
 pub mod execute;
 pub mod finalize;
+pub mod thinking;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum AgentType {
@@ -66,8 +67,14 @@ pub async fn run_agent_loop(
     cancel_state: State<'_, CancellationState>,
     max_local_loops: u32,
     phase: &str,
+    allow_tools: bool,
 ) -> Result<(), String> {
-    let tool_decls = tools::get_tool_declarations();
+    let tool_decls = if allow_tools {
+        Some(tools::get_tool_declarations())
+    } else {
+        None
+    };
+
     let generation_config = GenerationConfig {
         temperature: 0.7,
         max_output_tokens: 8192,
@@ -113,8 +120,12 @@ pub async fn run_agent_loop(
             contents: state.contents.clone(),
             system_instruction: state.system_instruction.clone(),
             generation_config: Some(generation_config.clone()),
-            tools: Some(tool_decls.clone()),
-            tool_config: Some(tool_config.clone()),
+            tools: tool_decls.clone(),
+            tool_config: if allow_tools {
+                Some(tool_config.clone())
+            } else {
+                None
+            },
         };
 
         // Stream kết quả về frontend
@@ -290,7 +301,10 @@ pub fn prune_history(contents: &mut Vec<GeminiContent>) {
             match part {
                 GeminiPart::Text { text } => {
                     if text.len() > 2000 {
-                        *text = format!("{}... [Nội dung quá dài đã được cắt bớt để tối ưu context]", &text[..500]);
+                        *text = format!(
+                            "{}... [Nội dung quá dài đã được cắt bớt để tối ưu context]",
+                            &text[..500]
+                        );
                     }
                 }
                 GeminiPart::FunctionResponse { function_response } => {
