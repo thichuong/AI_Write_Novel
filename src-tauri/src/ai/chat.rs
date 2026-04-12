@@ -38,6 +38,10 @@ pub async fn ai_chat(
         system_instruction: None,
         contents: Vec::new(),
         loop_count: 0,
+        last_chapter_content: String::new(),
+        last_saved_file: String::new(),
+        last_word_count: 0,
+        last_wiki_updates_count: 0,
     };
 
     // Chuẩn bị nội dung hội thoại (lịch sử + tin nhắn mới)
@@ -108,18 +112,21 @@ pub async fn ai_chat(
         AgentType::Writing | AgentType::General => {
             app_handle.emit("ai-agent-step", "analyze").ok();
             analyze_step(&mut state, cancel_state.clone()).await?;
+            super::nodes::prune_history(&mut state.contents);
 
             if cancel_state.is_cancelled() {
                 return Err("Stopped".to_string());
             }
             app_handle.emit("ai-agent-step", "execute").ok();
             execute_step(&mut state, cancel_state.clone()).await?;
+            super::nodes::prune_history(&mut state.contents);
 
             if cancel_state.is_cancelled() {
                 return Err("Stopped".to_string());
             }
             app_handle.emit("ai-agent-step", "finalize").ok();
             finalize_step(&mut state, cancel_state.clone()).await?;
+            super::nodes::prune_history(&mut state.contents);
 
             if cancel_state.is_cancelled() {
                 return Err("Stopped".to_string());

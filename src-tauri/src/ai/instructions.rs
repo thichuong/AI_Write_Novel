@@ -72,63 +72,98 @@ Agent nên sử dụng liên kết `[[Tên Thực Thể]]` để kết nối cá
 // --- NODE SPECIALIZED PROMPTS ---
 
 // 1. ANALYZE STEP
-pub const ANALYZE_PROMPT_WRITING: &str = r"
+pub const ANALYZE_PROMPT_WRITING: &str = r#"
 PHÂN TÍCH TIẾN ĐỘ & VĂN PHONG:
-1. Kiểm tra các chương gần nhất để nắm bắt giọng văn và mạch hiện tại.
-2. Đối chiếu Wiki để đảm bảo nhân vật nhất quán.
-3. Lập kế hoạch chi tiết cho nội dung sắp viết.
-LƯU Ý QUAN TRỌNG: Chỉ phân tích và lập kế hoạch. TUYỆT ĐỐI KHÔNG viết nội dung truyện trong bước này. Việc viết sẽ được thực hiện ở bước sau.";
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Suy nghĩ về bối cảnh hiện tại",
+    "status_check": "Đánh giá sự nhất quán với Wiki và các chương trước",
+    "plan": ["Bước 1: ...", "Bước 2: ..."]
+}"#;
 
-pub const ANALYZE_PROMPT_IDEATION: &str = r"
+pub const ANALYZE_PROMPT_IDEATION: &str = r#"
 PHÂN TÍCH KHÔNG GIAN SÁNG TẠO:
-1. Tìm kiếm các điểm chưa rõ ràng hoặc mâu thuẫn trong thế giới/cốt truyện hiện tại.
-2. Xác định các hướng đi tiềm năng có thể mở rộng.
-3. Lập danh sách các chủ đề cần brainstorm.
-LƯU Ý QUAN TRỌNG: Chỉ phân tích và liệt kê các hướng đi. TUYỆT ĐỐI KHÔNG bắt đầu brainstorm chi tiết hay viết nội dung trong bước này.";
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Suy nghĩ về các hướng đi tiềm năng",
+    "status_check": "Xác định các mâu thuẫn hoặc điểm cần làm rõ",
+    "plan": ["Bước 1: ...", "Bước 2: ..."]
+}"#;
 
-pub const ANALYZE_PROMPT_GENERAL: &str = r"
-PHÂN TÍCH TÁC VỤ HỖ TRỢ:
-1. Xác định các yêu cầu kỹ thuật hoặc quản lý (không phải sáng tác trực tiếp).
-2. Kiểm tra các tài liệu dự án cần thiết.
-3. Lập kế hoạch thực hiện ngắn gọn.";
+pub const ANALYZE_PROMPT_GENERAL: &str = r#"
+PHÂN TÍCH TÁC VỤ:
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Phân tích yêu cầu hệ thống/quản lý",
+    "status_check": "Kiểm tra tài nguyên sẵn có",
+    "plan": ["Bước 1: ...", "Bước 2: ..."]
+}"#;
 
 // 2. EXECUTE STEP
-pub const EXECUTE_PROMPT_WRITING: &str = r"
+pub const EXECUTE_PROMPT_WRITING: &str = r#"
 THỰC HIỆN SÁNG TÁC:
-- Viết nội dung truyện phong phú, giàu hình ảnh.
-- Sử dụng công cụ `write_file` để lưu nội dung vào file .md trong thư mục chapters.
-- **QUY TẮC ĐƯỜNG DẪN**: Luôn đặt trong thư mục chapters, ví dụ: `path: 'chapters/Chuong_1.md'`.
-- Khi đã hoàn thành việc viết và lưu file, kết thúc bằng 'DONE_EXECUTION'.";
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Tình tiết chính sẽ viết trong chương này",
+    "chapter_content": "Nội dung chương truyện (Markdown)...",
+    "suggested_filename": "chapters/Chuong_X.md"
+}"#;
 
-pub const EXECUTE_PROMPT_IDEATION: &str = r"
+pub const EXECUTE_PROMPT_IDEATION: &str = r#"
 THỰC HIỆN XÂY DỰNG Ý TƯỞNG:
-- Đưa ra ít nhất 3 phương án sáng tạo khác nhau cho mỗi yêu cầu.
-- Sử dụng công cụ Search để tìm cảm hứng thực tế nếu cần thiết.
-- Phác thảo các khái niệm mới vào Wiki nếu người dùng đồng ý.
-- Khi xong, hãy kết thúc bằng chuỗi 'DONE_EXECUTION'.";
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Cách tiếp cận các phương án sáng tạo",
+    "ideas": [
+        {"title": "Ý tưởng 1", "content": "Chi tiết..."},
+        {"title": "Ý tưởng 2", "content": "Chi tiết..."}
+    ],
+    "recommendation": "Phương án tốt nhất và lý do"
+}"#;
 
-pub const EXECUTE_PROMPT_GENERAL: &str = r"
+pub const EXECUTE_PROMPT_GENERAL: &str = r#"
 THỰC HIỆN TÁC VỤ:
-- Sử dụng các công cụ một cách hiệu quả để hoàn thành mục tiêu.
-- Cập nhật 'memory.md' nếu có thay đổi quan trọng về cấu trúc dự án.
-- Khi xong, hãy kết thúc bằng chuỗi 'DONE_EXECUTION'.";
+BẮT BUỘC TRẢ VỀ JSON (Nếu có nội dung cần lưu, hãy dùng tool trực tiếp trước khi trả về JSON này):
+{
+    "thought_process": "Các bước đã thực hiện",
+    "result": "Kết quả cuối cùng của tác vụ",
+    "next_steps": "Các lưu ý cho bước tổng kết"
+}"#;
 
 // 3. FINALIZE STEP
-pub const FINALIZE_PROMPT_WRITING: &str = r"
+pub const FINALIZE_PROMPT_WRITING: &str = r#"
 TỔNG KẾT & KIỂM TRA (Wiki Audit):
-1. Tóm tắt các tình tiết mới đã thêm.
-2. Cập nhật trạng thái cốt truyện trong 'memory.md'.
-3. **QUAN TRỌNG**: Rà soát lại nội dung vừa viết. Nếu có NHÂN VẬT mới, ĐỊA DANH mới, hoặc THÔNG TIN THẾ GIỚI mới, hãy dùng `wiki_upsert_entity` để cập nhật Wiki ngay bây giờ.
-4. **XÁC MINH VẬT LÝ**: Dùng tool `list_directory` hoặc `read_file` để kiểm tra chắc chắn chương truyện đã được lưu vào thư mục `chapters/`.";
+Dựa trên nội dung vừa viết ở bước trước, hãy thực hiện tổng kết.
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Rà soát lại sự nhất quán của chương vừa viết",
+    "summary": "Tóm tắt ngắn gọn nội dung chương (100 chữ)",
+    "wiki_updates": [
+        {"name": "Tên thực thể mới/cần cập nhật", "type": "Character|Location|Item", "description": "Mô tả mới", "tags": ["tag"]}
+    ],
+    "memory_updates": "Tiến trình mới cần ghi vào memory.md (ví dụ: Đã hoàn thành chương 14, nhân vật A bị thương)"
+}"#;
 
-pub const FINALIZE_PROMPT_IDEATION: &str = r"
-TỔNG KẾT Ý TƯỞNG: Hệ thống lại các ý tưởng đã brainstorm. Đảm bảo các khái niệm quan trọng đã được ghi chú lại trong Wiki hoặc Memory.";
+pub const FINALIZE_PROMPT_IDEATION: &str = r#"
+TỔNG KẾT Ý TƯỞNG:
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Đánh giá khả năng triển khai các ý tưởng",
+    "summary": "Hệ thống lại các ý tưởng tâm đắc nhất",
+    "memory_updates": "Các ý tưởng cần lưu lại vào memory.md để tham khảo sau"
+}"#;
 
-pub const FINALIZE_PROMPT_GENERAL: &str = r"
-TỔNG KẾT & CẬP NHẬT: Tóm tắt ngắn gọn các hành động đã thực hiện và cập nhật 'memory.md' để lưu lại trạng thái công việc.";
+pub const FINALIZE_PROMPT_GENERAL: &str = r#"
+TỔNG KẾT & CẬP NHẬT:
+BẮT BUỘC TRẢ VỀ JSON:
+{
+    "thought_process": "Kiểm tra lại kết quả công việc",
+    "summary": "Tóm tắt các hành động đã thực hiện",
+    "memory_updates": "Cập nhật trạng thái dự án vào memory.md"
+}"#;
 
 // 4. COMPLETE STEP
-pub const COMPLETE_PROMPT_WRITING: &str = "HOÀN TẤT: Thông báo cho tác giả rằng chương/đoạn văn đã được viết xong và mời họ đọc lại hoặc đưa ra yêu cầu chỉnh sửa.";
-pub const COMPLETE_PROMPT_IDEATION: &str = "HOÀN TẤT: Giới thiệu các ý tưởng tâm đắc nhất và hỏi xem người dùng muốn đào sâu thêm vào hướng nào.";
-pub const COMPLETE_PROMPT_GENERAL: &str =
-    "HOÀN TẤT: Xác nhận công việc đã hoàn thành và hỏi xem người dùng có cần hỗ trợ gì thêm không.";
+pub const COMPLETE_PROMPT_WRITING: &str = "HOÀN TẤT: Thông báo cho tác giả rằng chương truyện đã được xử lý xong và mời họ tiếp tục.";
+pub const COMPLETE_PROMPT_IDEATION: &str = "HOÀN TẤT: Giới thiệu các ý tưởng và hỏi xem người dùng muốn chọn hướng nào.";
+pub const COMPLETE_PROMPT_GENERAL: &str = "HOÀN TẤT: Xác nhận công việc đã hoàn thành.";
+

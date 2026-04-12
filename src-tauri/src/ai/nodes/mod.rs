@@ -53,6 +53,11 @@ pub struct AgentState {
     pub system_instruction: Option<GeminiContent>,
     pub contents: Vec<GeminiContent>,
     pub loop_count: u32,
+    // Các trường hỗ trợ tối ưu hóa luồng cho model nhỏ
+    pub last_chapter_content: String,
+    pub last_saved_file: String,
+    pub last_word_count: usize,
+    pub last_wiki_updates_count: usize,
 }
 
 /// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút
@@ -89,7 +94,7 @@ pub async fn run_agent_loop(
                 "ai-chat-stream-thought",
                 json!({
                     "phase": phase,
-                    "text": format!("Đang thực hiện bước: {}...\n", phase)
+                    "text": format!("Đang thực hiện bước: {phase}...\n")
                 }),
             )
             .ok();
@@ -234,7 +239,7 @@ fn execute_tool_calls(
                     tags,
                 )
             }
-            _ => Err(format!("Công cụ không tồn tại: {}", fc.name)),
+            _ => Err(format!("Công cụ không tồn tại: {name}", name = fc.name)),
         };
 
         let response_json = match tool_result {
@@ -254,37 +259,99 @@ fn execute_tool_calls(
 
 /// Tối ưu hóa lịch sử: Loại bỏ các `FunctionResponse` cũ hoặc các nội dung quá lớn
 /// để tiết kiệm token cho các bước cuối cùng.
-fn prune_history(contents: &mut Vec<GeminiContent>) {
-    if contents.len() <= 6 {
+pub fn prune_history(contents: &mut Vec<GeminiContent>) {
+    if contents.len() <= 4 {
         return; // Không dọn dẹp nếu lịch sử còn ngắn
     }
 
     let mut new_contents = Vec::new();
 
-    // Giữ lại tin nhắn đầu tiên (user prompt đầu)
+    // 1. Luôn giữ lại tin nhắn đầu tiên (Yêu cầu gốc của người dùng)
     if let Some(first_msg) = contents.first().cloned() {
         new_contents.push(first_msg);
     }
 
-    // Giữ lại 5 tin nhắn cuối cùng
-    // Trong các tin nhắn được giữ lại, nếu là 'function' (FunctionResponse),
-    // ta có thể thay thế nội dung kết quả quá lớn bằng một thông báo ngắn nếu nó không phải là tin nhắn mới nhất.
-    for (i, mut msg) in contents.iter().rev().take(5).rev().cloned().enumerate() {
-        if msg.role == "function" && i < 4 {
-            // Không phải tin nhắn cuối cùng
-            for part in &mut msg.parts {
-                if let GeminiPart::FunctionResponse { function_response } = part {
+    // 2. Lọc và tóm tắt các tin nhắn ở giữa
+    // Chỉ giữ lại 4 tin nhắn gần nhất để làm ngữ cảnh tươi mới
+    let total = contents.len();
+    let take_count = 4;
+    let skip_count = if total > take_count + 1 { 1 } else { total }; // Bỏ qua tin nhắn đầu đã lấy
+
+    for (i, msg_ref) in contents.iter().enumerate().skip(skip_count) {
+        // Chỉ lấy take_count tin nhắn cuối
+        if i < total - take_count {
+            continue;
+        }
+
+        let mut msg = msg_ref.clone();
+
+        // Tối ưu hóa dung lượng từng tin nhắn
+        for part in &mut msg.parts {
+            match part {
+                GeminiPart::Text { text } => {
+                    if text.len() > 2000 {
+                        *text = format!("{}... [Nội dung quá dài đã được cắt bớt để tối ưu context]", &text[..500]);
+                    }
+                }
+                GeminiPart::FunctionResponse { function_response } => {
                     let res_str = function_response.response.to_string();
-                    if res_str.len() > 1000 {
+                    if res_str.len() > 500 {
                         function_response.response = json!({
-                            "result": "Content truncated to save tokens (information already processed in previous steps)."
+                            "result": "Dữ liệu tool đã được xử lý ở bước trước."
                         });
                     }
                 }
+                GeminiPart::FunctionCall { .. } => {}
             }
         }
         new_contents.push(msg);
     }
 
     *contents = new_contents;
+}
+
+/// Trích xuất khối JSON đầu tiên hợp lệ từ chuỗi văn bản (sử dụng brace counting)
+pub fn extract_json_block(text: &str) -> Option<String> {
+    let mut balance = 0;
+    let mut first_brace = None;
+    let mut last_brace = None;
+    let mut in_string = false;
+    let mut escaped = false;
+
+    for (i, c) in text.char_indices() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        if c == '"' {
+            in_string = true;
+            continue;
+        }
+
+        if c == '{' {
+            if first_brace.is_none() {
+                first_brace = Some(i);
+            }
+            balance += 1;
+        } else if c == '}' && balance > 0 {
+            balance -= 1;
+            if balance == 0 && first_brace.is_some() {
+                last_brace = Some(i);
+                break;
+            }
+        }
+    }
+
+    if let (Some(start), Some(end)) = (first_brace, last_brace) {
+        Some(text[start..=end].to_string())
+    } else {
+        None
+    }
 }
