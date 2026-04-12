@@ -27,12 +27,12 @@ pub async fn analyze_step(
     };
 
     let analyze_prompt = format!(
-        "PHÂN TÍCH VÀ NẠP KIẾN THỨC:\n\
+        "YÊU CẦU PHÂN TÍCH VÀ NẠP KIẾN THỨC (KHÔNG VIẾT TRUYỆN):\n\
         {agent_specific_guidance}\n\n\
         ### CẤU TRÚC THƯ MỤC:\n{dir_context}\n\n\
         ### NỘI DUNG MEMORY.MD:\n{memory_context}\n\n\
         ### DANH SÁCH WIKI:\n{wiki_context}\n\n\
-        HÀNH ĐỘNG: Nếu cần tìm hiểu thêm thông tin thực tế để viết, hãy dùng `google_search` hoặc `read_file`."
+        HÀNH ĐỘNG: Nếu cần tìm hiểu thêm thông tin để phục vụ lập kế hoạch, hãy dùng `google_search` hoặc `read_file`."
     );
 
     state.contents.push(GeminiContent {

@@ -74,6 +74,8 @@ Agent nên sử dụng liên kết `[[Tên Thực Thể]]` để kết nối cá
 // 1. ANALYZE STEP
 pub const ANALYZE_PROMPT_WRITING: &str = r#"
 PHÂN TÍCH TIẾN ĐỘ & VĂN PHONG:
+LƯU Ý QUAN TRỌNG: Bước này CHỈ dùng để phân tích và lập kế hoạch. 
+TUYỆT ĐỐI KHÔNG viết nội dung chương truyện hoặc sáng tác chi tiết ở bước này.
 BẮT BUỘC TRẢ VỀ JSON:
 {
     "thought_process": "Suy nghĩ về bối cảnh hiện tại",
@@ -83,6 +85,8 @@ BẮT BUỘC TRẢ VỀ JSON:
 
 pub const ANALYZE_PROMPT_IDEATION: &str = r#"
 PHÂN TÍCH KHÔNG GIAN SÁNG TẠO:
+LƯU Ý QUAN TRỌNG: Bước này CHỈ dùng để phân tích bối cảnh. 
+TUYỆT ĐỐI KHÔNG đưa ra các ý tưởng chi tiết hoặc phác thảo nội dung ở bước này.
 BẮT BUỘC TRẢ VỀ JSON:
 {
     "thought_process": "Suy nghĩ về các hướng đi tiềm năng",
@@ -92,6 +96,8 @@ BẮT BUỘC TRẢ VỀ JSON:
 
 pub const ANALYZE_PROMPT_GENERAL: &str = r#"
 PHÂN TÍCH TÁC VỤ:
+LƯU Ý QUAN TRỌNG: Bước này CHỈ dùng để đánh giá yêu cầu. 
+TUYỆT ĐỐI KHÔNG thực hiện tác vụ chính hoặc viết văn bản dài ở bước này.
 BẮT BUỘC TRẢ VỀ JSON:
 {
     "thought_process": "Phân tích yêu cầu hệ thống/quản lý",

@@ -268,50 +268,43 @@ fn execute_tool_calls(
     response_parts
 }
 
-/// Tối ưu hóa lịch sử: Loại bỏ các `FunctionResponse` cũ hoặc các nội dung quá lớn
+/// Tối ưu hóa lịch sử: Loại bỏ các tin nhắn cũ hoặc các nội dung quá lớn
 /// để tiết kiệm token cho các bước cuối cùng.
+/// Đảm bảo: Ưu tiên giữ lại các tin nhắn mới nhất (Tin mới nhất là quan trọng nhất).
+/// Không cần giữ lại yêu cầu gốc vì Context đã được duy trì qua Wiki/Memory.
 pub fn prune_history(contents: &mut Vec<GeminiContent>) {
-    if contents.len() <= 4 {
-        return; // Không dọn dẹp nếu lịch sử còn ngắn
+    let take_count = 12; // Giữ lại 12 tin nhắn gần nhất
+    
+    if contents.len() <= take_count {
+        return; 
     }
 
-    let mut new_contents = Vec::new();
-
-    // 1. Luôn giữ lại tin nhắn đầu tiên (Yêu cầu gốc của người dùng)
-    if let Some(first_msg) = contents.first().cloned() {
-        new_contents.push(first_msg);
-    }
-
-    // 2. Lọc và tóm tắt các tin nhắn ở giữa
-    // Chỉ giữ lại 4 tin nhắn gần nhất để làm ngữ cảnh tươi mới
     let total = contents.len();
-    let take_count = 4;
-    let skip_count = if total > take_count + 1 { 1 } else { total }; // Bỏ qua tin nhắn đầu đã lấy
+    let start_index = total - take_count;
+    
+    // Chỉ lấy take_count tin nhắn cuối cùng
+    let mut new_contents = Vec::with_capacity(take_count);
 
-    for (i, msg_ref) in contents.iter().enumerate().skip(skip_count) {
-        // Chỉ lấy take_count tin nhắn cuối
-        if i < total - take_count {
-            continue;
-        }
-
-        let mut msg = msg_ref.clone();
+    for msg in contents.iter().skip(start_index) {
+        let mut msg = msg.clone();
 
         // Tối ưu hóa dung lượng từng tin nhắn
         for part in &mut msg.parts {
             match part {
                 GeminiPart::Text { text } => {
-                    if text.len() > 2000 {
+                    if text.len() > 3000 {
+                        let end_index = text.char_indices().nth(1000).map_or(text.len(), |(i, _)| i);
                         *text = format!(
-                            "{}... [Nội dung quá dài đã được cắt bớt để tối ưu context]",
-                            &text[..500]
+                            "{}... [Nội dung quá dài đã được lược bỏ]",
+                            &text[..end_index]
                         );
                     }
                 }
                 GeminiPart::FunctionResponse { function_response } => {
                     let res_str = function_response.response.to_string();
-                    if res_str.len() > 500 {
+                    if res_str.len() > 1000 {
                         function_response.response = json!({
-                            "result": "Dữ liệu tool đã được xử lý ở bước trước."
+                            "result": "[Dữ liệu tool lớn đã được lược bỏ]"
                         });
                     }
                 }
