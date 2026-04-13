@@ -147,6 +147,7 @@ pub fn tool_wiki_upsert_entity(
     name: &str,
     content: &str,
     tags: Vec<String>,
+    relations: Vec<String>,
 ) -> Result<String, String> {
     let folder = match entity_type.to_lowercase().as_str() {
         "character" | "nhân vật" => "Characters",
@@ -162,6 +163,7 @@ pub fn tool_wiki_upsert_entity(
     let mut file_content = String::from("---\n");
     writeln!(file_content, "type: {folder}").ok();
     writeln!(file_content, "tags: {tags:?}").ok();
+    writeln!(file_content, "relations: {relations:?}").ok();
     file_content.push_str("---\n\n");
     file_content.push_str(content);
 
@@ -362,6 +364,19 @@ fn decl_wiki_upsert_entity() -> FunctionDecl {
                 p.insert("tags".to_string(), Schema {
                     field_type: "array".to_string(),
                     description: Some("Danh sách nhãn (ví dụ: ['quan-trong', 'bi-an']).".to_string()),
+                    properties: None,
+                    items: Some(Box::new(Schema {
+                        field_type: "string".to_string(),
+                        description: None,
+                        properties: None,
+                        items: None,
+                        required: None,
+                    })),
+                    required: None,
+                });
+                p.insert("relations".to_string(), Schema {
+                    field_type: "array".to_string(),
+                    description: Some("Danh sách quan hệ (ví dụ: ['[[VuongLam]]: Anh em + Kẻ thù', '[[TaDinhPhong]]: Sư phụ']). Có thể kết hợp nhiều loại quan hệ bằng dấu '+'. ".to_string()),
                     properties: None,
                     items: Some(Box::new(Schema {
                         field_type: "string".to_string(),

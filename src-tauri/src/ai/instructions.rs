@@ -62,7 +62,7 @@ Chuyển hóa ý tưởng thành con chữ một cách nhất quán.
 - Đảm bảo sự nhất quán tuyệt đối bằng cách tra cứu Wiki thường xuyên.
 ";
 
-pub const WIKI_GRAPH_RULES: &str = r"
+pub const WIKI_GRAPH_RULES: &str = r#"
 # QUY TẮC WIKI GRAPH (Knowledge Management)
 
 Hệ thống Wiki Graph giúp quản lý các thực thể trong tiểu thuyết một cách có hệ thống.
@@ -75,9 +75,16 @@ Hệ thống Wiki Graph giúp quản lý các thực thể trong tiểu thuyết
   - `Plot/` : Timeline, các sự kiện quan trọng.
 
 ## 📝 ĐỊNH DẠNG FILE (Markdown + Frontmatter)
-Mỗi thực thể là một file `.md` có cấu trúc cụ thể với YAML Frontmatter để lưu trữ metadata.
-Agent nên sử dụng liên kết `[[Tên Thực Thể]]` để kết nối các trang Wiki với nhau.
-";
+Mỗi thực thể là một file `.md` có cấu trúc cụ thể với YAML Frontmatter:
+- `type`: Loại thực thể (Characters, World, Lore, Plot).
+- `tags`: Các thẻ phân loại.
+- `relations`: Danh sách quan hệ theo định dạng `["[[Tên Không Dấu]]: Quan hệ"]`.
+  - Hỗ trợ quan hệ gia đình (Anh, Chị, Em...), tình cảm, và cấp bậc.
+  - Một thực thể có thể có nhiều quan hệ với người khác: dùng danh sách hoặc dấu `+`.
+  - Ví dụ: `relations: ["[[VuongLam]]: Anh em + Kẻ thù", "[[TaDinhPhong]]: Sư phụ + Người yêu"]`
+
+Agent nên sử dụng liên kết `[[Tên Thực Thể]]` để kết nối các trang Wiki và cập nhật quan hệ hai chiều khi có thể.
+"#;
 
 // --- NODE SPECIALIZED PROMPTS ---
 
@@ -158,16 +165,16 @@ BẮT BUỘC TRẢ VỀ JSON:
 pub const EXECUTE_PROMPT_WRITING: &str = r#"
 CẬP NHẬT WIKI & HỆ THỐNG:
 Hệ thống đã tự động lưu chương truyện. Nhiệm vụ của bạn bây giờ là:
-1. Rà soát nội dung vừa viết, trích xuất nhân vật/địa danh.
+1. Rà soát nội dung vừa viết, trích xuất nhân vật/địa danh và **quan hệ giữa họ**.
 2. Với mỗi thực thể, kiểm tra Wiki:
-   - Nếu chưa có: Tạo mới bằng `wiki_upsert_entity` với **tên không dấu**.
-   - Nếu đã có: Cập nhật thông tin mới nếu cần (dùng đúng tên không dấu cũ).
-3. Đảm bảo mọi tool call sử dụng tên không dấu cho tham số `name` và `path`.
+   - Nếu chưa có: Tạo mới bằng `wiki_upsert_entity` với **tên không dấu** và điền quan hệ.
+   - Nếu đã có: Cập nhật thông tin mới và **quan hệ mới** (dùng đúng tên không dấu cũ).
+3. Đảm bảo mọi tool call sử dụng tên không dấu cho tham số `name`, `path` và trong mảng `relations`.
 
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Rà soát thực thể, khớp tên ngữ cảnh và chuyển đổi sang không dấu để gọi tool",
-    "actions_taken": ["Đã cập nhật Wiki nhân vật VuongLam (Vương Lâm)..."],
+    "thought_process": "Rà soát thực thể, quan hệ mới/thay đổi, khớp tên ngữ cảnh và chuyển đổi sang không dấu để gọi tool",
+    "actions_taken": ["Đã cập nhật Wiki nhân vật VuongLam (Vương Lâm) và quan hệ với TaDinhPhong..."],
     "wiki_updates_count": 0
 }"#;
 

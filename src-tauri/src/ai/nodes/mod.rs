@@ -241,6 +241,14 @@ fn execute_tool_calls(
                             .collect()
                     })
                     .unwrap_or_default();
+                let relations = fc.args["relations"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .map(|v| v.as_str().unwrap_or_default().to_string())
+                            .collect()
+                    })
+                    .unwrap_or_default();
                 tools::tool_wiki_upsert_entity(
                     &state.app_handle,
                     &state.root_path,
@@ -248,6 +256,7 @@ fn execute_tool_calls(
                     name,
                     content,
                     tags,
+                    relations,
                 )
             }
             _ => Err(format!("Công cụ không tồn tại: {name}", name = fc.name)),
