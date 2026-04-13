@@ -8,8 +8,8 @@ use super::nodes::{
 use tauri::{AppHandle, Emitter, State};
 
 use super::instructions::{
-    AGENT_INSTRUCTIONS, CHAT_AGENT_INSTRUCTIONS, IDEATION_AGENT_INSTRUCTIONS, WIKI_GRAPH_RULES,
-    WRITING_AGENT_INSTRUCTIONS,
+    AGENT_INSTRUCTIONS, CHAT_AGENT_INSTRUCTIONS, IDEATION_AGENT_INSTRUCTIONS, NAMING_RULES,
+    WIKI_GRAPH_RULES, WRITING_AGENT_INSTRUCTIONS,
 };
 
 #[tauri::command]
@@ -136,7 +136,7 @@ fn apply_agent_instructions(state: &mut AgentState, agent_type: AgentType) {
     };
 
     let system_instructions = format!(
-        "{base_instruction}\n\n{WIKI_GRAPH_RULES}\n\nHÀNH ĐỘNG: Nếu cần thông tin cốt truyện, hãy đọc Wiki hoặc Chương cũ. Nếu cần thông tin thực tế, hãy dùng Google Search."
+        "{base_instruction}\n\n{NAMING_RULES}\n\n{WIKI_GRAPH_RULES}\n\nHÀNH ĐỘNG: Nếu cần thông tin cốt truyện, hãy đọc Wiki hoặc Chương cũ. Nếu cần thông tin thực tế, hãy dùng Google Search."
     );
 
     state.system_instruction = Some(super::gemini_types::GeminiContent {

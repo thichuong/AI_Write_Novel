@@ -21,6 +21,16 @@ Chuyên gia hỗ trợ viết tiểu thuyết chuyên nghiệp có khả năng t
 - **Log**: Luôn để lại ghi chú về những gì bạn đã làm trong phần `summarize`.
 "#;
 
+pub const NAMING_RULES: &str = r#"
+## 🆔 QUY TẮC ĐẶT TÊN & TRUY XUẤT (BẮT BUỘC)
+1. **Truy xuất & Tạo file**: BẮT BUỘC sử dụng tên **KHÔNG DẤU, VIẾT LIỀN, VIẾT HOA CHỮ ĐẦU MỖI TỪ** (PascalCase). 
+   - Ví dụ: `VuongLam`, `TaDinhPhong`, `VictoriaIrene` thay vì `Vương Lâm`, `Tạ Đình Phong`.
+2. **Nhận diện nhân vật**:
+   - Khi người dùng viết tên có dấu hoặc viết tắt (ví dụ: "Lâm"), bạn phải dựa vào ngữ cảnh và danh sách Wiki để xác định chính xác thực thể (ví dụ: "Vương Lâm").
+   - Luôn kiểm tra danh sách Wiki (`wiki_list_entities`) để xác nhận nhân vật đã tồn tại hay chưa trước khi tạo mới.
+   - Nếu nhân vật đã có, hãy dùng đúng tên không dấu đã đặt trước đó để truy xuất.
+"#;
+
 pub const CHAT_AGENT_INSTRUCTIONS: &str = r"
 # BẠN LÀ CHAT ASSISTANT
 Bạn là một người bạn đồng hành thân thiện. Giờ đây bạn đã có thêm khả năng tra cứu!
@@ -75,21 +85,26 @@ Agent nên sử dụng liên kết `[[Tên Thực Thể]]` để kết nối cá
 pub const ANALYZE_PROMPT_WRITING: &str = r#"
 PHÂN TÍCH TIẾN ĐỘ & VĂN PHONG:
 LƯU Ý QUAN TRỌNG: Bước này CHỈ dùng để phân tích và lập kế hoạch. 
+1. Kiểm tra danh sách Wiki để xác định các nhân vật/địa danh sẽ xuất hiện.
+2. Đối chiếu tên nhân vật trong yêu cầu với Wiki (dùng ngữ cảnh để khớp tên nếu cần).
+3. Xác định các thực thể chưa có trong Wiki để lên kế hoạch tạo mới (dùng tên không dấu).
 TUYỆT ĐỐI KHÔNG viết nội dung chương truyện hoặc sáng tác chi tiết ở bước này.
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Suy nghĩ về bối cảnh hiện tại",
-    "status_check": "Đánh giá sự nhất quán với Wiki và các chương trước",
+    "thought_process": "Suy nghĩ về bối cảnh và xác định thực thể (khớp tên có dấu -> không dấu)",
+    "status_check": "Đánh giá sự nhất quán với Wiki (ai đã có, ai chưa)",
     "plan": ["Bước 1: ...", "Bước 2: ..."]
 }"#;
 
 pub const ANALYZE_PROMPT_IDEATION: &str = r#"
 PHÂN TÍCH KHÔNG GIAN SÁNG TẠO:
 LƯU Ý QUAN TRỌNG: Bước này CHỈ dùng để phân tích bối cảnh. 
+1. Kiểm tra danh sách Wiki để xác định các thực thể liên quan.
+2. Đối chiếu và khớp tên (có dấu -> không dấu) dựa trên ngữ cảnh.
 TUYỆT ĐỐI KHÔNG đưa ra các ý tưởng chi tiết hoặc phác thảo nội dung ở bước này.
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Suy nghĩ về các hướng đi tiềm năng",
+    "thought_process": "Suy nghĩ về các hướng đi và xác định thực thể Wiki liên quan",
     "status_check": "Xác định các mâu thuẫn hoặc điểm cần làm rõ",
     "plan": ["Bước 1: ...", "Bước 2: ..."]
 }"#;
@@ -143,22 +158,26 @@ BẮT BUỘC TRẢ VỀ JSON:
 pub const EXECUTE_PROMPT_WRITING: &str = r#"
 CẬP NHẬT WIKI & HỆ THỐNG:
 Hệ thống đã tự động lưu chương truyện. Nhiệm vụ của bạn bây giờ là:
-1. Rà soát nội dung vừa viết và dùng `wiki_upsert_entity` nếu có nhân vật/địa danh mới xuất hiện.
-2. Trả về JSON xác nhận.
+1. Rà soát nội dung vừa viết, trích xuất nhân vật/địa danh.
+2. Với mỗi thực thể, kiểm tra Wiki:
+   - Nếu chưa có: Tạo mới bằng `wiki_upsert_entity` với **tên không dấu**.
+   - Nếu đã có: Cập nhật thông tin mới nếu cần (dùng đúng tên không dấu cũ).
+3. Đảm bảo mọi tool call sử dụng tên không dấu cho tham số `name` và `path`.
 
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Rà soát các thực thể cần cập nhật Wiki",
-    "actions_taken": ["Đã cập nhật Wiki nhân vật A..."],
+    "thought_process": "Rà soát thực thể, khớp tên ngữ cảnh và chuyển đổi sang không dấu để gọi tool",
+    "actions_taken": ["Đã cập nhật Wiki nhân vật VuongLam (Vương Lâm)..."],
     "wiki_updates_count": 0
 }"#;
 
 pub const EXECUTE_PROMPT_IDEATION: &str = r#"
 CẬP NHẬT KIẾN THỨC Ý TƯỞNG:
 Dựa trên các ý tưởng đã chọn, hãy dùng `wiki_upsert_entity` để lưu lại các thiết lập quan trọng vào Wiki Plot hoặc Lore.
+LƯU Ý: Luôn sử dụng **tên không dấu** cho mọi thực thể mới.
 BẮT BUỘC TRẢ VỀ JSON:
 {
-    "thought_process": "Xác định các điểm mấu chốt cần lưu",
+    "thought_process": "Xác định các điểm mấu chốt cần lưu và chuyển đổi tên sang không dấu",
     "actions_taken": ["Đã cập nhật Wiki..."]
 }"#;
 
@@ -180,7 +199,7 @@ LƯU Ý: Bước này KHÔNG được gọi tool.
 BẮT BUỘC TRẢ VỀ JSON:
 {
     "thought_process": "Đánh giá các sự kiện quan trọng nhất vừa diễn ra",
-    "project_summary": "Nội dung tóm tắt dự án mới nhất (Markdown)..."
+    "project_summary": "Nội dung tóm tắt dự án mới nhất (Markdown). Ghi rõ tên nhân vật (có dấu) và tên Wiki của họ (không dấu PascalCase, ví dụ: Vương Lâm - VuongLam) để agent sau dễ tra cứu."
 }"#;
 
 pub const FINALIZE_PROMPT_IDEATION: &str = r#"
