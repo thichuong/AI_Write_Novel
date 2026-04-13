@@ -2,8 +2,8 @@ import { state } from './state.js';
 import { invoke, fs, listen, path } from './services/tauri.js';
 import { escapeAttr, showStatus } from './utils.js';
 
-export async function openFile(input) {
-    console.log("openFile called with:", input);
+export async function openFile(input, shouldFocus = true) {
+    console.log("openFile called with:", input, "shouldFocus:", shouldFocus);
     try {
         let node;
         if (typeof input === 'string') {
@@ -47,14 +47,23 @@ export async function openFile(input) {
             if (existing) existing.content = content;
         }
 
-        state.activeFilePath = node.path;
+        // Only change active file if shouldFocus is true OR if there's no active file
+        if (shouldFocus || !state.activeFilePath) {
+            state.activeFilePath = node.path;
+        }
+
         renderTabs();
-        loadEditorContent(tab);
-        
-        // Disable editing for system files
-        const storyEditor = document.getElementById('story-editor');
-        if (storyEditor) {
-            storyEditor.contentEditable = node.name.startsWith('.') ? "false" : "true";
+
+        // Always update editor content if the file being opened IS the active file
+        // This ensures the editor refreshes if the AI updates the file currently being viewed
+        if (state.activeFilePath === node.path) {
+            loadEditorContent(tab);
+
+            // Disable editing for system files
+            const storyEditor = document.getElementById('story-editor');
+            if (storyEditor) {
+                storyEditor.contentEditable = node.name.startsWith('.') ? "false" : "true";
+            }
         }
     } catch (err) {
         console.error("Failed to open file:", err);
@@ -158,8 +167,9 @@ export function setupEditorListeners() {
         console.log("Received open-file event:", event);
         const { path: filePath } = event.payload;
         if (filePath) {
-            console.log("Triggering openFile for:", filePath);
-            openFile(filePath);
+            console.log("Triggering openFile (no-focus) for:", filePath);
+            // Pass false for shouldFocus to avoid disrupting user reading
+            openFile(filePath, false);
         }
     });
 }
