@@ -39,7 +39,7 @@ impl AgentType {
             Self::Chat => "Chat Agent (Trò chuyện & Tìm kiếm)",
             Self::Ideation => "Ideation Agent (Lên ý tưởng)",
             Self::Writing => "Writing Agent (Sáng tác & Chỉnh sửa)",
-            Self::General => "General Agent (Xử lý tác vụ tổng hợp)",
+            Self::General => "General Agent (Xử lý tác vụ phức tạp, trộn lẫn hoặc chỉnh sửa)",
         }
     }
 }
@@ -283,14 +283,14 @@ fn execute_tool_calls(
 /// Không cần giữ lại yêu cầu gốc vì Context đã được duy trì qua Wiki/Memory.
 pub fn prune_history(contents: &mut Vec<GeminiContent>) {
     let take_count = 12; // Giữ lại 12 tin nhắn gần nhất
-    
+
     if contents.len() <= take_count {
-        return; 
+        return;
     }
 
     let total = contents.len();
     let start_index = total - take_count;
-    
+
     // Chỉ lấy take_count tin nhắn cuối cùng
     let mut new_contents = Vec::with_capacity(take_count);
 
@@ -302,7 +302,8 @@ pub fn prune_history(contents: &mut Vec<GeminiContent>) {
             match part {
                 GeminiPart::Text { text } => {
                     if text.len() > 3000 {
-                        let end_index = text.char_indices().nth(1000).map_or(text.len(), |(i, _)| i);
+                        let end_index =
+                            text.char_indices().nth(1000).map_or(text.len(), |(i, _)| i);
                         *text = format!(
                             "{}... [Nội dung quá dài đã được lược bỏ]",
                             &text[..end_index]

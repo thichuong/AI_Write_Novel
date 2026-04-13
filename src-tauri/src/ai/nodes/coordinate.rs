@@ -21,7 +21,7 @@ DÀNH CHO ĐIỀU PHỐI:
 - "chat": Chào hỏi, câu hỏi xã giao, tìm kiếm thông tin thực tế, đọc file, xem thư mục, hỏi đáp về nội dung truyện.
 - "ideation": Lên ý tưởng, brainstorm, phát triển cốt truyện/nhân vật.
 - "writing": Viết mới hoặc chỉnh sửa văn bản truyện.
-- "general": Các tác vụ phức tạp hoặc trộn lẫn.
+- "general": Các tác vụ phức tạp hoặc trộn lẫn, các yêu cầu chỉnh sửa, sửa đổi nội dung hoặc cấu trúc.
 "#;
 
 pub async fn coordinate_step(
