@@ -352,11 +352,12 @@ sl-tree-item[data-name="wiki"] sl-icon {
 
 /* 3. Main Editor Area */
 #editor-container {
-    flex-grow: 1;
-    min-width: 400px;
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-dark);
+    overflow: hidden;
 }
 
 #tab-bar {
@@ -368,53 +369,86 @@ sl-tree-item[data-name="wiki"] sl-icon {
     display: flex;
     overflow-x: auto;
     overflow-y: hidden;
+    width: 100%;
+    max-width: 100%;
     /* Custom scrollbar for tab bar */
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
+    scrollbar-width: none; /* Hide scrollbar but keep scrollable */
 }
 
 #tab-bar::-webkit-scrollbar {
-    height: 3px;
-}
-
-#tab-bar::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 3px;
+    display: none; /* Hide scrollbar for Chrome/Safari */
 }
 
 #tabs-list {
     display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
     height: 100%;
+    align-items: center;
 }
 
 .tab {
     display: flex;
     align-items: center;
-    padding: 0 15px;
+    padding: 0 12px;
     height: 100%;
     border-right: 1px solid var(--border-color);
     color: var(--text-dim);
     font-size: 0.8rem;
     cursor: pointer;
     background: transparent;
-    min-width: 120px;
+    min-width: 140px;
+    max-width: 220px;
     flex-shrink: 0;
+    transition: all 0.2s ease;
+    position: relative;
+    user-select: none;
+}
+
+.tab:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
 }
 
 .tab.active {
     background-color: var(--bg-dark);
     color: var(--text-primary);
-    border-bottom: 2px solid var(--accent-color);
+}
+
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.tab span {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
 }
 
 .tab-close {
-    margin-left: 10px;
-    font-size: 12px;
-    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    opacity: 0.3;
+    transition: all 0.2s ease;
 }
 
 .tab-close:hover {
     opacity: 1;
+    background-color: var(--bg-accent);
 }
 
 #editor-area {

@@ -67,13 +67,16 @@ export function renderTabs() {
     if (!tabsList) return;
     
     tabsList.innerHTML = "";
+    let activeTabEl = null;
+
     state.openTabs.forEach(tab => {
         const tabEl = document.createElement('div');
-        tabEl.className = `tab ${tab.path === state.activeFilePath ? 'active' : ''} ${tab.dirty ? 'dirty' : ''}`;
+        const isActive = tab.path === state.activeFilePath;
+        tabEl.className = `tab ${isActive ? 'active' : ''} ${tab.dirty ? 'dirty' : ''}`;
         tabEl.innerHTML = `
             <span>${tab.name}</span>
             <div class="dirty-indicator"></div>
-            <i data-lucide="x" class="tab-close" onclick="event.stopPropagation(); window.closeTab('${escapeAttr(tab.path)}')"></i>
+            <i data-lucide="x" class="tab-close" title="Đóng" onclick="event.stopPropagation(); window.closeTab('${escapeAttr(tab.path)}')"></i>
         `;
         tabEl.onclick = () => {
             state.activeFilePath = tab.path;
@@ -81,8 +84,17 @@ export function renderTabs() {
             loadEditorContent(tab);
         };
         tabsList.appendChild(tabEl);
+        if (isActive) activeTabEl = tabEl;
     });
+
     if (window.lucide) window.lucide.createIcons();
+
+    // Auto-scroll to active tab
+    if (activeTabEl) {
+        requestAnimationFrame(() => {
+            activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        });
+    }
 }
 
 export function closeTab(filePath) {
