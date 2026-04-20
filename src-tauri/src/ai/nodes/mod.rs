@@ -5,8 +5,11 @@ use crate::ai::gemini_types::{
     GenerationConfig, ThinkingConfig, ToolConfig,
 };
 use crate::ai::tools;
+use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::path::PathBuf;
+use strum_macros::{AsRefStr, Display};
 use tauri::{AppHandle, Emitter, State};
 
 pub mod analyze;
@@ -16,7 +19,8 @@ pub mod execute;
 pub mod finalize;
 pub mod thinking;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, AsRefStr, Display)]
+#[strum(serialize_all = "lowercase")]
 pub enum AgentType {
     Chat,
     Ideation,
@@ -25,15 +29,6 @@ pub enum AgentType {
 }
 
 impl AgentType {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Chat => "chat",
-            Self::Ideation => "ideation",
-            Self::Writing => "writing",
-            Self::General => "general",
-        }
-    }
-
     pub const fn description(self) -> &'static str {
         match self {
             Self::Chat => "Chat Agent (Trò chuyện & Tìm kiếm)",
@@ -47,7 +42,7 @@ impl AgentType {
 /// Trạng thái của Agent trong quá trình xử lý đa bước
 pub struct AgentState {
     pub app_handle: AppHandle,
-    pub root_path: String,
+    pub root_path: PathBuf,
     pub api_key: String,
     pub model: String,
     pub agent_type: AgentType,
@@ -68,7 +63,7 @@ pub async fn run_agent_loop(
     max_local_loops: u32,
     phase: &str,
     allow_tools: bool,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let tool_decls = if allow_tools {
         Some(tools::get_tool_declarations())
     } else {
@@ -259,12 +254,12 @@ fn execute_tool_calls(
                     relations,
                 )
             }
-            _ => Err(format!("Công cụ không tồn tại: {name}", name = fc.name)),
+            _ => Err(AppError::Ai(format!("Công cụ không tồn tại: {}", fc.name))),
         };
 
         let response_json = match tool_result {
             Ok(res) => json!({ "result": res }),
-            Err(err) => json!({ "error": err }),
+            Err(err) => json!({ "error": err.to_string() }),
         };
 
         response_parts.push(GeminiPart::FunctionResponse {
@@ -279,20 +274,17 @@ fn execute_tool_calls(
 
 /// Tối ưu hóa lịch sử: Loại bỏ các tin nhắn cũ hoặc các nội dung quá lớn
 /// để tiết kiệm token cho các bước cuối cùng.
-/// Đảm bảo: Ưu tiên giữ lại các tin nhắn mới nhất (Tin mới nhất là quan trọng nhất).
-/// Không cần giữ lại yêu cầu gốc vì Context đã được duy trì qua Wiki/Memory.
 pub fn prune_history(contents: &mut Vec<GeminiContent>) {
-    let take_count = 12; // Giữ lại 12 tin nhắn gần nhất
+    const TAKE_COUNT: usize = 12; // Giữ lại 12 tin nhắn gần nhất
+    const MAX_TEXT_LEN: usize = 3000;
+    const MAX_TOOL_RES_LEN: usize = 1000;
 
-    if contents.len() <= take_count {
+    if contents.len() <= TAKE_COUNT {
         return;
     }
 
-    let total = contents.len();
-    let start_index = total - take_count;
-
-    // Chỉ lấy take_count tin nhắn cuối cùng
-    let mut new_contents = Vec::with_capacity(take_count);
+    let start_index = contents.len() - TAKE_COUNT;
+    let mut new_contents = Vec::with_capacity(TAKE_COUNT);
 
     for msg in contents.iter().skip(start_index) {
         let mut msg = msg.clone();
@@ -301,18 +293,14 @@ pub fn prune_history(contents: &mut Vec<GeminiContent>) {
         for part in &mut msg.parts {
             match part {
                 GeminiPart::Text { text } => {
-                    if text.len() > 3000 {
-                        let end_index =
-                            text.char_indices().nth(1000).map_or(text.len(), |(i, _)| i);
-                        *text = format!(
-                            "{}... [Nội dung quá dài đã được lược bỏ]",
-                            &text[..end_index]
-                        );
+                    if text.len() > MAX_TEXT_LEN {
+                        let truncated: String = text.chars().take(1000).collect();
+                        *text = format!("{truncated}... [Nội dung quá dài đã được lược bỏ]");
                     }
                 }
                 GeminiPart::FunctionResponse { function_response } => {
                     let res_str = function_response.response.to_string();
-                    if res_str.len() > 1000 {
+                    if res_str.len() > MAX_TOOL_RES_LEN {
                         function_response.response = json!({
                             "result": "[Dữ liệu tool lớn đã được lược bỏ]"
                         });
@@ -347,22 +335,22 @@ pub fn extract_json_block(text: &str) -> Option<String> {
             continue;
         }
 
-        if c == '"' {
-            in_string = true;
-            continue;
-        }
-
-        if c == '{' {
-            if first_brace.is_none() {
-                first_brace = Some(i);
+        match c {
+            '"' => in_string = true,
+            '{' => {
+                if first_brace.is_none() {
+                    first_brace = Some(i);
+                }
+                balance += 1;
             }
-            balance += 1;
-        } else if c == '}' && balance > 0 {
-            balance -= 1;
-            if balance == 0 && first_brace.is_some() {
-                last_brace = Some(i);
-                break;
+            '}' if balance > 0 => {
+                balance -= 1;
+                if balance == 0 && first_brace.is_some() {
+                    last_brace = Some(i);
+                    break;
+                }
             }
+            _ => {}
         }
     }
 

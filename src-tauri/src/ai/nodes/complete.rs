@@ -4,12 +4,13 @@ use crate::ai::instructions::{
     COMPLETE_PROMPT_GENERAL, COMPLETE_PROMPT_IDEATION, COMPLETE_PROMPT_WRITING,
 };
 use crate::ai::nodes::{run_agent_loop, AgentState, AgentType};
+use crate::error::AppResult;
 use tauri::State;
 
 pub async fn complete_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let complete_prompt = if state.agent_type == AgentType::Writing {
         format!(
             "{}\n\n[HỆ THỐNG NHẮC NHỞ]: Bạn vừa hoàn thành việc viết khoảng {} từ, lưu vào file '{}'. Đã tự động cập nhật {} thực thể vào Wiki. Hãy dùng thông tin này để báo cáo ngắn gọn, thân thiện cho người dùng.",

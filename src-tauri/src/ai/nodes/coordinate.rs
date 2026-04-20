@@ -4,6 +4,7 @@ use crate::ai::gemini_types::{
     GeminiContent, GeminiPart, GeminiRequest, GenerationConfig, ThinkingConfig,
 };
 use crate::ai::nodes::{AgentState, AgentType};
+use crate::error::AppResult;
 use serde_json::json;
 use tauri::{Emitter, State};
 
@@ -27,7 +28,7 @@ DÀNH CHO ĐIỀU PHỐI:
 pub async fn coordinate_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
-) -> Result<Option<AgentType>, String> {
+) -> AppResult<Option<AgentType>> {
     state
         .app_handle
         .emit(
@@ -82,7 +83,8 @@ pub async fn coordinate_step(
     state.system_instruction = original_instructions;
 
     // Phân tích kết quả JSON
-    Ok(get_full_text(&parts).and_then(|json_text| handle_coordinate_response(state, &json_text)))
+    let full_text = get_full_text(&parts);
+    Ok(full_text.and_then(|json_text| handle_coordinate_response(state, &json_text)))
 }
 
 fn get_coordinate_schema() -> crate::ai::gemini_types::Schema {
@@ -121,73 +123,77 @@ fn get_coordinate_schema() -> crate::ai::gemini_types::Schema {
 }
 
 fn handle_coordinate_response(state: &mut AgentState, json_text: &str) -> Option<AgentType> {
-    if let Ok(v) = serde_json::from_str::<serde_json::Value>(json_text) {
-        let explanation = v["explanation"].as_str().unwrap_or("");
-        let agent_str = v["agent"].as_str();
+    let v: serde_json::Value = serde_json::from_str(json_text).ok()?;
+    let explanation = v["explanation"].as_str().unwrap_or("");
+    let agent_str = v["agent"].as_str();
 
-        // Nếu agent là null (literal hoặc chuỗi "null") hoặc trống, trả lời trực tiếp
-        if agent_str.is_none() || agent_str == Some("null") || agent_str == Some("") {
-            state.contents.push(GeminiContent {
-                role: "model".to_string(),
-                parts: vec![GeminiPart::Text {
-                    text: explanation.to_string(),
-                }],
-            });
+    // Nếu agent là null hoặc trống, trả lời trực tiếp
+    if agent_str.map_or(true, |s| s.is_empty() || s == "null") {
+        state.contents.push(GeminiContent {
+            role: "model".to_string(),
+            parts: vec![GeminiPart::Text {
+                text: explanation.to_string(),
+            }],
+        });
 
-            state
-                .app_handle
-                .emit(
-                    "ai-chat-stream",
-                    json!({ "text": explanation, "phase": "complete" }),
-                )
-                .ok();
+        state
+            .app_handle
+            .emit(
+                "ai-chat-stream",
+                json!({ "text": explanation, "phase": "complete" }),
+            )
+            .ok();
 
-            state
-                .app_handle
-                .emit("ai-chat-stream-done", json!({ "phase": "complete" }))
-                .ok();
+        state
+            .app_handle
+            .emit("ai-chat-stream-done", json!({ "phase": "complete" }))
+            .ok();
 
-            return None;
-        }
+        return None;
+    }
 
-        if let Some(agent_name) = agent_str {
-            let agent_type = match agent_name {
-                "chat" => AgentType::Chat,
-                "ideation" => AgentType::Ideation,
-                "writing" => AgentType::Writing,
-                _ => AgentType::General,
-            };
+    if let Some(agent_name) = agent_str {
+        let agent_type = match agent_name {
+            "chat" => AgentType::Chat,
+            "ideation" => AgentType::Ideation,
+            "writing" => AgentType::Writing,
+            _ => AgentType::General,
+        };
 
-            // Emit lại để UI biết đã chuyển agent
-            state
-                .app_handle
-                .emit("ai-agent-selected", agent_type.as_str())
-                .ok();
+        // Emit lại để UI biết đã chuyển agent
+        state
+            .app_handle
+            .emit("ai-agent-selected", agent_type.as_ref())
+            .ok();
 
-            state
-                .app_handle
-                .emit(
-                    "ai-chat-stream-thought",
-                    json!({
-                        "phase": "coordinating",
-                        "text": format!("=> {}\n=> Đã điều phối tới: {}\n", explanation, agent_type.description())
-                    }),
-                )
-                .ok();
+        state
+            .app_handle
+            .emit(
+                "ai-chat-stream-thought",
+                json!({
+                    "phase": "coordinating",
+                    "text": format!("=> {explanation}\n=> Đã điều phối tới: {}\n", agent_type.description())
+                }),
+            )
+            .ok();
 
-            return Some(agent_type);
-        }
+        return Some(agent_type);
     }
     None
 }
 
 fn get_full_text(parts: &[GeminiPart]) -> Option<String> {
-    let mut full_text = String::new();
-    for part in parts {
-        if let GeminiPart::Text { text } = part {
-            full_text.push_str(text);
-        }
-    }
+    let full_text: String = parts
+        .iter()
+        .filter_map(|p| {
+            if let GeminiPart::Text { text } = p {
+                Some(text.as_str())
+            } else {
+                None
+            }
+        })
+        .collect();
+
     if full_text.is_empty() {
         None
     } else {

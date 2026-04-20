@@ -1,20 +1,21 @@
 use crate::ai::gemini_types::{FunctionDecl, GoogleSearch, Schema, ToolDeclaration};
+use crate::error::AppResult;
 use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use tauri::{AppHandle, Emitter};
 
 /// Danh sách các file trong thư mục
-pub fn tool_list_directory(root_path: &str, path: &str) -> Result<String, String> {
-    let target_dir = PathBuf::from(root_path).join(path);
+pub fn tool_list_directory<P: AsRef<Path>>(root_path: P, path: &str) -> AppResult<String> {
+    let target_dir = root_path.as_ref().join(path);
     if !target_dir.exists() {
-        return Err(format!("Thư mục không tồn tại: {path}"));
+        return Ok(format!("Thư mục không tồn tại: {path}"));
     }
 
     let mut result = String::new();
-    let entries = fs::read_dir(&target_dir).map_err(|e| e.to_string())?;
+    let entries = fs::read_dir(&target_dir)?;
 
     let mut files_and_folders = Vec::new();
     for entry in entries.flatten() {
@@ -29,7 +30,7 @@ pub fn tool_list_directory(root_path: &str, path: &str) -> Result<String, String
         }
 
         let rel_path = p
-            .strip_prefix(root_path)
+            .strip_prefix(root_path.as_ref())
             .map_or_else(|_| name.clone(), |dp| dp.to_string_lossy().to_string());
 
         let is_dir = p.is_dir();
@@ -56,26 +57,26 @@ pub fn tool_list_directory(root_path: &str, path: &str) -> Result<String, String
 }
 
 /// Đọc nội dung một file
-pub fn tool_read_file(root_path: &str, path: &str) -> Result<String, String> {
-    let full_path = PathBuf::from(root_path).join(path);
-    fs::read_to_string(full_path).map_err(|e| e.to_string())
+pub fn tool_read_file<P: AsRef<Path>>(root_path: P, path: &str) -> AppResult<String> {
+    let full_path = root_path.as_ref().join(path);
+    Ok(fs::read_to_string(full_path)?)
 }
 
 /// Ghi nội dung vào file
-pub fn tool_write_file(
+pub fn tool_write_file<P: AsRef<Path>>(
     app_handle: &AppHandle,
-    root_path: &str,
+    root_path: P,
     path: &str,
     content: &str,
-) -> Result<String, String> {
-    let full_path = PathBuf::from(root_path).join(path);
+) -> AppResult<String> {
+    let full_path = root_path.as_ref().join(path);
 
     // Đảm bảo thư mục cha tồn tại
     if let Some(parent) = full_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        fs::create_dir_all(parent)?;
     }
 
-    fs::write(&full_path, content).map_err(|e| e.to_string())?;
+    fs::write(&full_path, content)?;
 
     // Emit event để frontend đồng bộ file explorer và tự động mở file
     let _ = app_handle.emit(
@@ -87,20 +88,20 @@ pub fn tool_write_file(
 }
 
 /// Xóa một file hoặc thư mục
-pub fn tool_delete_file(
+pub fn tool_delete_file<P: AsRef<Path>>(
     app_handle: &AppHandle,
-    root_path: &str,
+    root_path: P,
     path: &str,
-) -> Result<String, String> {
-    let full_path = PathBuf::from(root_path).join(path);
+) -> AppResult<String> {
+    let full_path = root_path.as_ref().join(path);
     if !full_path.exists() {
         return Ok(format!("Không tìm thấy file để xóa: {path}"));
     }
 
     if full_path.is_dir() {
-        fs::remove_dir_all(full_path).map_err(|e| e.to_string())?;
+        fs::remove_dir_all(full_path)?;
     } else {
-        fs::remove_file(full_path).map_err(|e| e.to_string())?;
+        fs::remove_file(full_path)?;
     }
 
     // Emit event để frontend đồng bộ file explorer
@@ -112,11 +113,11 @@ pub fn tool_delete_file(
 }
 
 /// Liệt kê tất cả các thực thể trong Wiki
-pub fn tool_wiki_list_entities(root_path: &str) -> Result<String, String> {
-    fn visit_dirs(dir: &PathBuf, root: &str, res: &mut String) -> Result<(), String> {
+pub fn tool_wiki_list_entities<P: AsRef<Path>>(root_path: P) -> AppResult<String> {
+    fn visit_dirs(dir: &Path, root: &Path, res: &mut String) -> AppResult<()> {
         if dir.is_dir() {
-            for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
-                let entry = entry.map_err(|e| e.to_string())?;
+            for entry in fs::read_dir(dir)? {
+                let entry = entry?;
                 let path = entry.path();
                 if path.is_dir() {
                     visit_dirs(&path, root, res)?;
@@ -129,26 +130,26 @@ pub fn tool_wiki_list_entities(root_path: &str) -> Result<String, String> {
         Ok(())
     }
 
-    let wiki_dir = PathBuf::from(root_path).join("wiki");
+    let wiki_dir = root_path.as_ref().join("wiki");
     if !wiki_dir.exists() {
         return Ok("Chưa có dữ liệu Wiki. Thư mục wiki chưa tồn tại.".to_string());
     }
 
     let mut result = String::from("--- DANH SÁCH THỰC THỂ WIKI ---\n");
-    visit_dirs(&wiki_dir, root_path, &mut result)?;
+    visit_dirs(&wiki_dir, root_path.as_ref(), &mut result)?;
     Ok(result)
 }
 
 /// Tạo hoặc cập nhật thực thể Wiki với cấu trúc chuẩn
-pub fn tool_wiki_upsert_entity(
+pub fn tool_wiki_upsert_entity<P: AsRef<Path>>(
     app_handle: &AppHandle,
-    root_path: &str,
+    root_path: P,
     entity_type: &str,
     name: &str,
     content: &str,
     tags: Vec<String>,
     relations: Vec<String>,
-) -> Result<String, String> {
+) -> AppResult<String> {
     let folder = match entity_type.to_lowercase().as_str() {
         "character" | "nhân vật" => "Characters",
         "world" | "bối cảnh" => "World",
@@ -162,8 +163,25 @@ pub fn tool_wiki_upsert_entity(
     // Tạo nội dung với Frontmatter
     let mut file_content = String::from("---\n");
     writeln!(file_content, "type: {folder}").ok();
-    writeln!(file_content, "tags: {tags:?}").ok();
-    writeln!(file_content, "relations: {relations:?}").ok();
+    
+    if tags.is_empty() {
+        file_content.push_str("tags: []\n");
+    } else {
+        file_content.push_str("tags:\n");
+        for tag in tags {
+            writeln!(file_content, "  - {tag}").ok();
+        }
+    }
+
+    if relations.is_empty() {
+        file_content.push_str("relations: []\n");
+    } else {
+        file_content.push_str("relations:\n");
+        for rel in relations {
+            writeln!(file_content, "  - {rel}").ok();
+        }
+    }
+    
     file_content.push_str("---\n\n");
     file_content.push_str(content);
 

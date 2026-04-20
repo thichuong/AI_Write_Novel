@@ -1,14 +1,16 @@
 pub use super::cancellation::CancellationState;
 use super::gemini_types::{GeminiRequest, GeminiStreamResponse};
+use crate::error::{AppError, AppResult};
 use futures_util::StreamExt;
 use reqwest::Client;
+use std::fs;
 use tauri::{AppHandle, Emitter, State};
 
 /// Lấy API key từ .env
-pub fn get_api_key() -> Result<String, String> {
+pub fn get_api_key() -> AppResult<String> {
     dotenvy::dotenv().ok();
     std::env::var("GEMINI_API_KEY")
-        .map_err(|_| "GEMINI_API_KEY chưa được cấu hình trong file .env".to_string())
+        .map_err(|_| AppError::Env("GEMINI_API_KEY chưa được cấu hình trong file .env".to_string()))
 }
 
 #[tauri::command]
@@ -25,7 +27,7 @@ pub fn get_settings() -> serde_json::Value {
 }
 
 #[tauri::command]
-pub async fn list_models() -> Result<Vec<String>, String> {
+pub async fn list_models() -> AppResult<Vec<String>> {
     Ok(vec![
         "gemma-4-31b-it".to_string(),
         "gemma-4-26b-a4b-it".to_string(),
@@ -33,9 +35,7 @@ pub async fn list_models() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-pub fn save_settings(api_key: String, model: String) -> Result<(), String> {
-    use std::fs;
-
+pub fn save_settings(api_key: String, model: String) -> AppResult<()> {
     // 1. Lưu vào biến môi trường hiện tại
     std::env::set_var("GEMINI_API_KEY", &api_key);
     std::env::set_var("AI_MODEL", &model);
@@ -43,15 +43,12 @@ pub fn save_settings(api_key: String, model: String) -> Result<(), String> {
     // 2. Cập nhật file .env
     let path = ".env";
     let content = if std::path::Path::new(path).exists() {
-        fs::read_to_string(path).map_err(|e| format!("Không thể đọc file .env: {e}"))?
+        fs::read_to_string(path)?
     } else {
         String::new()
     };
 
-    let mut lines: Vec<String> = content
-        .lines()
-        .map(std::string::ToString::to_string)
-        .collect();
+    let mut lines: Vec<String> = content.lines().map(String::from).collect();
     let mut key_found = false;
     let mut model_found = false;
 
@@ -72,14 +69,17 @@ pub fn save_settings(api_key: String, model: String) -> Result<(), String> {
         lines.push(format!("AI_MODEL={model}"));
     }
 
-    fs::write(path, lines.join("\n") + "\n")
-        .map_err(|e| format!("Không thể ghi file .env: {e}"))?;
+    let mut final_content = lines.join("\n");
+    if !final_content.is_empty() {
+        final_content.push('\n');
+    }
+    fs::write(path, final_content)?;
 
     Ok(())
 }
 
 #[tauri::command]
-pub fn save_api_key(api_key: String) -> Result<(), String> {
+pub fn save_api_key(api_key: String) -> AppResult<()> {
     save_settings(api_key, get_model())
 }
 
@@ -97,7 +97,7 @@ pub async fn stream_gemini_response(
     request: &GeminiRequest,
     event_name: &str,
     phase: &str,
-) -> Result<Vec<super::gemini_types::GeminiPart>, String> {
+) -> AppResult<Vec<super::gemini_types::GeminiPart>> {
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?key={api_key}&alt=sse"
     );
@@ -107,13 +107,12 @@ pub async fn stream_gemini_response(
         .post(&url)
         .json(request)
         .send()
-        .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+        .await?;
 
     if !response.status().is_success() {
-        let status = response.status();
+        let status = response.status().as_u16();
         let body = response.text().await.unwrap_or_default();
-        return Err(format!("API error {status}: {body}"));
+        return Err(AppError::Api { status, body });
     }
 
     let mut stream = response.bytes_stream();
@@ -122,45 +121,43 @@ pub async fn stream_gemini_response(
 
     while let Some(chunk_result) = stream.next().await {
         if cancel_state.is_cancelled() {
-            return Err("Agent stopped by user".to_string());
+            return Err(AppError::Cancelled("Agent stopped by user".to_string()));
         }
-        let chunk = chunk_result.map_err(|e| format!("Stream error: {e}"))?;
+        let chunk = chunk_result?;
         let text = String::from_utf8_lossy(&chunk);
         buffer.push_str(&text);
 
         // SSE format: lines starting with "data: "
         while let Some(pos) = buffer.find('\n') {
             let line = buffer[..pos].trim().to_string();
-            buffer = buffer[pos + 1..].to_string();
+            buffer.drain(..=pos);
 
             if let Some(json_str) = line.strip_prefix("data: ") {
-                if json_str.trim() == "[DONE]" {
+                let json_str = json_str.trim();
+                if json_str == "[DONE]" {
                     continue;
                 }
 
                 if let Ok(response) = serde_json::from_str::<GeminiStreamResponse>(json_str) {
-                    if let Some(candidates) = &response.candidates {
+                    if let Some(candidates) = response.candidates {
                         for candidate in candidates {
-                            if let Some(content) = &candidate.content {
-                                if let Some(parts) = &content.parts {
+                            if let Some(content) = candidate.content {
+                                if let Some(parts) = content.parts {
                                     for part in parts {
                                         if let Some(text) = &part.text {
                                             // Stream text to UI with phase context
-                                            if part.thought.unwrap_or(false) {
-                                                app_handle
-                                                    .emit(
-                                                        &format!("{event_name}-thought"),
-                                                        serde_json::json!({ "text": text, "phase": phase }),
-                                                    )
-                                                    .ok();
+                                            let target_event = if part.thought.unwrap_or(false) {
+                                                format!("{event_name}-thought")
                                             } else {
-                                                app_handle
-                                                    .emit(
-                                                        event_name,
-                                                        serde_json::json!({ "text": text, "phase": phase }),
-                                                    )
-                                                    .ok();
-                                            }
+                                                event_name.to_string()
+                                            };
+
+                                            app_handle
+                                                .emit(
+                                                    &target_event,
+                                                    serde_json::json!({ "text": text, "phase": phase }),
+                                                )
+                                                .ok();
 
                                             // Accumulate text parts
                                             if let Some(super::gemini_types::GeminiPart::Text {
@@ -177,7 +174,7 @@ pub async fn stream_gemini_response(
                                             }
                                         }
 
-                                        if let Some(fc) = &part.function_call {
+                                        if let Some(fc) = part.function_call {
                                             // Emit tool call event so UI knows what's happening
                                             app_handle
                                                 .emit(
@@ -193,7 +190,7 @@ pub async fn stream_gemini_response(
                                             // Accumulate function call
                                             accumulated_parts.push(
                                                 super::gemini_types::GeminiPart::FunctionCall {
-                                                    function_call: fc.clone(),
+                                                    function_call: fc,
                                                 },
                                             );
                                         }

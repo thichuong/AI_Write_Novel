@@ -6,13 +6,14 @@ use crate::ai::instructions::{
 };
 use crate::ai::nodes::{run_agent_loop, AgentState, AgentType};
 use crate::ai::tools;
+use crate::error::AppResult;
 use serde_json::json;
 use tauri::{Emitter, State};
 
 pub async fn thinking_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     if state.agent_type == AgentType::Writing {
         return perform_writing_thinking(state, cancel_state).await;
     }
@@ -42,7 +43,7 @@ pub async fn thinking_step(
 async fn perform_ideation_thinking(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     state.contents.push(GeminiContent {
         role: "user".to_string(),
         parts: vec![GeminiPart::Text {
@@ -91,16 +92,16 @@ async fn perform_ideation_thinking(
         parts: parts.clone(),
     });
 
-    let full_text = parts
+    let full_text: String = parts
         .iter()
         .filter_map(|p| {
             if let GeminiPart::Text { text } = p {
-                Some(text.clone())
+                Some(text.as_str())
             } else {
                 None
             }
         })
-        .collect::<String>();
+        .collect();
 
     if let Some(json_text) = crate::ai::nodes::extract_json_block(&full_text) {
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_text) {
@@ -145,7 +146,7 @@ async fn perform_ideation_thinking(
 async fn perform_writing_thinking(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     state.contents.push(GeminiContent {
         role: "user".to_string(),
         parts: vec![GeminiPart::Text {
@@ -194,16 +195,16 @@ async fn perform_writing_thinking(
         parts: parts.clone(),
     });
 
-    let full_text = parts
+    let full_text: String = parts
         .iter()
         .filter_map(|p| {
             if let GeminiPart::Text { text } = p {
-                Some(text.clone())
+                Some(text.as_str())
             } else {
                 None
             }
         })
-        .collect::<String>();
+        .collect();
 
     if let Some(json_text) = crate::ai::nodes::extract_json_block(&full_text) {
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_text) {
@@ -239,22 +240,22 @@ async fn perform_writing_thinking(
     Ok(())
 }
 
-fn process_thinking_feedback(state: &mut AgentState) -> Result<(), String> {
+fn process_thinking_feedback(state: &mut AgentState) -> AppResult<()> {
     let Some(last_msg) = state.contents.last() else {
         return Ok(());
     };
 
-    let full_text = last_msg
+    let full_text: String = last_msg
         .parts
         .iter()
         .filter_map(|p| {
             if let GeminiPart::Text { text } = p {
-                Some(text.clone())
+                Some(text.as_str())
             } else {
                 None
             }
         })
-        .collect::<String>();
+        .collect();
 
     if let Some(json_text) = crate::ai::nodes::extract_json_block(&full_text) {
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_text) {

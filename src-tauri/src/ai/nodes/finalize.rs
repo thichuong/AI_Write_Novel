@@ -6,13 +6,14 @@ use crate::ai::instructions::{
 };
 use crate::ai::nodes::{AgentState, AgentType};
 use crate::ai::tools;
+use crate::error::AppResult;
 use serde_json::json;
 use tauri::{Emitter, State};
 
 pub async fn finalize_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     // Luồng Tổng kết (Finalize) - KHÔNG CẬP NHẬT WIKI (Đã làm ở bước Execute)
     let finalize_prompt = match state.agent_type {
         AgentType::Writing => FINALIZE_PROMPT_WRITING,
@@ -79,17 +80,17 @@ pub async fn finalize_step(
     Ok(())
 }
 
-fn process_finalize_response(state: &AgentState, parts: &[GeminiPart]) -> Result<(), String> {
-    let full_text = parts
+fn process_finalize_response(state: &AgentState, parts: &[GeminiPart]) -> AppResult<()> {
+    let full_text: String = parts
         .iter()
         .filter_map(|p| {
             if let GeminiPart::Text { text } = p {
-                Some(text.clone())
+                Some(text.as_str())
             } else {
                 None
             }
         })
-        .collect::<String>();
+        .collect();
 
     if let Some(json_text) = crate::ai::nodes::extract_json_block(&full_text) {
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_text) {

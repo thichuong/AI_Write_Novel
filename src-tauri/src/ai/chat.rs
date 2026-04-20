@@ -5,6 +5,8 @@ use super::nodes::{
     execute::execute_step, finalize::finalize_step, run_agent_loop, thinking::thinking_step,
     AgentState, AgentType,
 };
+use crate::error::{AppError, AppResult};
+use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, State};
 
 use super::instructions::{
@@ -25,14 +27,14 @@ pub async fn ai_chat(
     _current_file: String,
     message: String,
     chat_history: Vec<serde_json::Value>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let api_key = get_api_key()?;
     let model = get_model();
 
     // 1. Khởi tạo State với ngữ cảnh cơ bản
     let mut state = AgentState {
         app_handle: app_handle.clone(),
-        root_path: root_path.clone(),
+        root_path: PathBuf::from(root_path),
         api_key,
         model,
         agent_type: AgentType::General, // Default
@@ -52,7 +54,9 @@ pub async fn ai_chat(
 
     // 2. Điều phối thông minh (Coordinator)
     app_handle.emit("ai-agent-step", "coordinating").ok();
-    let agent_type = match coordinate_step(&mut state, cancel_state.clone()).await {
+    let coordinate_result = coordinate_step(&mut state, cancel_state.clone()).await;
+    
+    let agent_type = match coordinate_result {
         Ok(Some(at)) => at,
         Ok(None) => {
             // Đã trả lời trực tiếp, thông báo hoàn tất toàn hệ thống
@@ -66,7 +70,7 @@ pub async fn ai_chat(
         }
         Err(e) => {
             if cancel_state.is_cancelled() {
-                return Err("Agent stopped by user".to_string());
+                return Err(AppError::Cancelled("Agent stopped by user".to_string()));
             }
             app_handle.emit("ai-chat-stream-thought", serde_json::json!({
                 "phase": "coordinating",
@@ -151,7 +155,7 @@ async fn run_standard_agent_flow(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
     with_pruning: bool,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let app_handle = state.app_handle.clone();
 
     // 1. Analyze
@@ -161,7 +165,7 @@ async fn run_standard_agent_flow(
         super::nodes::prune_history(&mut state.contents);
     }
     if cancel_state.is_cancelled() {
-        return Err("Stopped".to_string());
+        return Err(AppError::Cancelled("Stopped".to_string()));
     }
 
     // 2. Thinking
@@ -171,7 +175,7 @@ async fn run_standard_agent_flow(
         super::nodes::prune_history(&mut state.contents);
     }
     if cancel_state.is_cancelled() {
-        return Err("Stopped".to_string());
+        return Err(AppError::Cancelled("Stopped".to_string()));
     }
 
     // 3. Execute
@@ -181,7 +185,7 @@ async fn run_standard_agent_flow(
         super::nodes::prune_history(&mut state.contents);
     }
     if cancel_state.is_cancelled() {
-        return Err("Stopped".to_string());
+        return Err(AppError::Cancelled("Stopped".to_string()));
     }
 
     // 4. Finalize
@@ -191,7 +195,7 @@ async fn run_standard_agent_flow(
         super::nodes::prune_history(&mut state.contents);
     }
     if cancel_state.is_cancelled() {
-        return Err("Stopped".to_string());
+        return Err(AppError::Cancelled("Stopped".to_string()));
     }
 
     // 5. Complete

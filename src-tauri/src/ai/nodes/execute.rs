@@ -4,13 +4,14 @@ use crate::ai::instructions::{
     EXECUTE_PROMPT_GENERAL, EXECUTE_PROMPT_IDEATION, EXECUTE_PROMPT_WRITING,
 };
 use crate::ai::nodes::{run_agent_loop, AgentState, AgentType};
+use crate::error::AppResult;
 use serde_json::json;
 use tauri::{Emitter, State};
 
 pub async fn execute_step(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     // Luồng Thực thi (Execute) - ĐƯỢC DÙNG TOOL
     let execute_prompt = match state.agent_type {
         AgentType::Writing => EXECUTE_PROMPT_WRITING,
@@ -51,17 +52,17 @@ fn process_execute_feedback(state: &mut AgentState) {
         return;
     };
 
-    let full_text = last_msg
+    let full_text: String = last_msg
         .parts
         .iter()
         .filter_map(|p| {
             if let GeminiPart::Text { text } = p {
-                Some(text.clone())
+                Some(text.as_str())
             } else {
                 None
             }
         })
-        .collect::<String>();
+        .collect();
 
     if let Some(json_text) = crate::ai::nodes::extract_json_block(&full_text) {
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_text) {
