@@ -178,6 +178,28 @@ export function setupAIListeners() {
             }
         };
     }
+
+    // Cài đặt sự kiện xóa tất cả kiến thức đã chọn
+    const clearKnowledgeBtn = document.getElementById('clear-knowledge-btn');
+    if (clearKnowledgeBtn) {
+        clearKnowledgeBtn.onclick = () => {
+            clearKnowledgeFiles();
+        };
+    }
+
+    // Khởi tạo hiển thị ban đầu cho các file kiến thức
+    renderKnowledgeFiles();
+
+    // Khởi tạo và ghi nhớ Agent Type từ localStorage
+    const agentTypeSelect = document.getElementById('agent-type-select');
+    if (agentTypeSelect) {
+        const savedAgentType = localStorage.getItem('ai_agent_type') || 'general';
+        agentTypeSelect.value = savedAgentType;
+        
+        agentTypeSelect.addEventListener('sl-change', () => {
+            localStorage.setItem('ai_agent_type', agentTypeSelect.value);
+        });
+    }
 }
 
 async function initAPIKeyUI() {
@@ -353,11 +375,17 @@ export async function sendChat() {
     showStatus("AI đang suy nghĩ...");
 
     try {
+        const knowledgeFiles = state.selectedKnowledgeFiles || [];
+        const agentTypeSelect = document.getElementById('agent-type-select');
+        const selectedAgentType = agentTypeSelect ? agentTypeSelect.value : 'general';
+
         await invoke('ai_chat', {
             rootPath: state.currentStoryPath,
             currentFile: state.activeFilePath || "",
             message: msg,
             chatHistory: state.chatHistory.slice(-10),
+            selectedKnowledgeFiles: knowledgeFiles.map(f => f.path),
+            agentType: selectedAgentType,
         });
     } catch (err) {
         console.error("AI chat failed:", err);
@@ -466,4 +494,76 @@ export function addChatMessage(role, text) {
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     return div;
+}
+
+export function addFileToKnowledge(filePath, fileName) {
+    if (!state.selectedKnowledgeFiles) {
+        state.selectedKnowledgeFiles = [];
+    }
+    
+    // Kiểm tra trùng lặp
+    const exists = state.selectedKnowledgeFiles.some(f => f.path === filePath);
+    if (exists) {
+        showStatus("Tệp này đã được nạp làm kiến thức!");
+        return;
+    }
+    
+    state.selectedKnowledgeFiles.push({ path: filePath, name: fileName });
+    renderKnowledgeFiles();
+    showStatus(`Đã nạp kiến thức: ${fileName}`);
+}
+
+export function removeFileFromKnowledge(filePath) {
+    if (!state.selectedKnowledgeFiles) return;
+    state.selectedKnowledgeFiles = state.selectedKnowledgeFiles.filter(f => f.path !== filePath);
+    renderKnowledgeFiles();
+}
+
+export function clearKnowledgeFiles() {
+    state.selectedKnowledgeFiles = [];
+    renderKnowledgeFiles();
+    showStatus("Đã xóa tất cả file kiến thức!");
+}
+
+export function renderKnowledgeFiles() {
+    const container = document.getElementById('knowledge-files-container');
+    const countSpan = document.getElementById('knowledge-files-count');
+    const listDiv = document.getElementById('knowledge-files-list');
+    
+    if (!container || !listDiv) return;
+    
+    const files = state.selectedKnowledgeFiles || [];
+    
+    if (files.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    if (countSpan) countSpan.innerText = files.length;
+    
+    listDiv.innerHTML = "";
+    files.forEach(file => {
+        const tag = document.createElement('div');
+        tag.className = 'knowledge-tag';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.innerText = file.name;
+        nameSpan.title = file.path;
+        tag.appendChild(nameSpan);
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'knowledge-tag-remove';
+        removeBtn.title = "Xóa";
+        removeBtn.innerHTML = '<i data-lucide="x"></i>';
+        removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            removeFileFromKnowledge(file.path);
+        };
+        tag.appendChild(removeBtn);
+        
+        listDiv.appendChild(tag);
+    });
+    
+    if (window.lucide) window.lucide.createIcons();
 }

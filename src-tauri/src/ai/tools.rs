@@ -163,7 +163,7 @@ pub fn tool_wiki_upsert_entity<P: AsRef<Path>>(
     // Tạo nội dung với Frontmatter
     let mut file_content = String::from("---\n");
     writeln!(file_content, "type: {folder}").ok();
-    
+
     if tags.is_empty() {
         file_content.push_str("tags: []\n");
     } else {
@@ -181,7 +181,7 @@ pub fn tool_wiki_upsert_entity<P: AsRef<Path>>(
             writeln!(file_content, "  - {rel}").ok();
         }
     }
-    
+
     file_content.push_str("---\n\n");
     file_content.push_str(content);
 

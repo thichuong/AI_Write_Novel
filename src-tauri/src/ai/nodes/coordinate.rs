@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::ai::api_client::stream_gemini_response;
 use crate::ai::cancellation::CancellationState;
 use crate::ai::gemini_types::{

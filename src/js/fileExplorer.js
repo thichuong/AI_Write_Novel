@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { fs, path, listen, openDialog } from './services/tauri.js';
 import { escapeAttr, showStatus } from './utils.js';
 import { openFile, renderTabs } from './editor.js';
-import { loadChatHistory } from './ai.js';
+import { loadChatHistory, addFileToKnowledge } from './ai.js';
 
 export function setupExplorerListeners() {
     listen('file-system-changed', () => {
@@ -80,6 +80,18 @@ function showContextMenu(x, y, path, type, name) {
     menu.style.left = `${x}px`;
     menu.classList.remove('hidden');
 
+    const addKnowledgeItem = document.getElementById('context-menu-add-knowledge');
+    const knowledgeDivider = document.getElementById('context-menu-divider-knowledge');
+    if (addKnowledgeItem) {
+        if (type === 'file') {
+            addKnowledgeItem.classList.remove('hidden');
+            if (knowledgeDivider) knowledgeDivider.classList.remove('hidden');
+        } else {
+            addKnowledgeItem.classList.add('hidden');
+            if (knowledgeDivider) knowledgeDivider.classList.add('hidden');
+        }
+    }
+
     const slMenu = document.getElementById('explorer-context-menu');
     slMenu.onclick = (event) => {
         const menuItem = event.target.closest('sl-menu-item');
@@ -90,6 +102,7 @@ function showContextMenu(x, y, path, type, name) {
         else if (action === 'new-folder') showNodeModal(path, 'folder');
         else if (action === 'rename') renameNodePrompt(path, name);
         else if (action === 'delete') deleteNode(path, name, type);
+        else if (action === 'add-knowledge') addFileToKnowledge(path, name);
 
         menu.classList.add('hidden');
     };

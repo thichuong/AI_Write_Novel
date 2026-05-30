@@ -1,6 +1,6 @@
 mod ai;
-mod fs;
 mod error;
+mod fs;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// Runs the Tauri application.

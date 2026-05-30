@@ -1,7 +1,8 @@
+#![allow(clippy::too_many_arguments, clippy::format_push_string)]
 use super::api_client::{get_api_key, get_model};
 use super::cancellation::CancellationState;
 use super::nodes::{
-    analyze::analyze_step, complete::complete_step, coordinate::coordinate_step,
+    analyze::analyze_step, complete::complete_step,
     execute::execute_step, finalize::finalize_step, run_agent_loop, thinking::thinking_step,
     AgentState, AgentType,
 };
@@ -27,9 +28,39 @@ pub async fn ai_chat(
     _current_file: String,
     message: String,
     chat_history: Vec<serde_json::Value>,
+    selected_knowledge_files: Vec<String>,
+    agent_type: String,
 ) -> AppResult<()> {
     let api_key = get_api_key()?;
     let model = get_model();
+
+    // Safely read selected knowledge files without unwrap/expect
+    let mut knowledge_context = String::new();
+    for file_path_str in &selected_knowledge_files {
+        let file_path = PathBuf::from(file_path_str);
+        if file_path.exists() && file_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&file_path) {
+                let file_name = file_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("Unknown File");
+
+                // Construct file context block format
+                knowledge_context.push_str("\n\n--- KNOWLEDGE FILE: ");
+                knowledge_context.push_str(file_name);
+                knowledge_context.push_str(" ---\n");
+                knowledge_context.push_str(&content);
+                knowledge_context.push_str("\n--- END OF FILE ---\n");
+            }
+        }
+    }
+
+    let selected_agent = match agent_type.to_lowercase().as_str() {
+        "chat" => AgentType::Chat,
+        "ideation" => AgentType::Ideation,
+        "writing" => AgentType::Writing,
+        _ => AgentType::General,
+    };
 
     // 1. Khởi tạo State với ngữ cảnh cơ bản
     let mut state = AgentState {
@@ -37,7 +68,7 @@ pub async fn ai_chat(
         root_path: PathBuf::from(root_path),
         api_key,
         model,
-        agent_type: AgentType::General, // Default
+        agent_type: selected_agent,
         system_instruction: None,
         contents: Vec::new(),
         loop_count: 0,
@@ -45,6 +76,7 @@ pub async fn ai_chat(
         last_saved_file: String::new(),
         last_word_count: 0,
         last_wiki_updates_count: 0,
+        selected_files_content: knowledge_context,
     };
 
     // Chuẩn bị nội dung hội thoại (lịch sử + tin nhắn mới)
@@ -52,40 +84,26 @@ pub async fn ai_chat(
 
     cancel_state.reset();
 
-    // 2. Điều phối thông minh (Coordinator)
+    // 2. Thông báo chọn Agent
     app_handle.emit("ai-agent-step", "coordinating").ok();
-    let coordinate_result = coordinate_step(&mut state, cancel_state.clone()).await;
-    
-    let agent_type = match coordinate_result {
-        Ok(Some(at)) => at,
-        Ok(None) => {
-            // Đã trả lời trực tiếp, thông báo hoàn tất toàn hệ thống
-            app_handle
-                .emit(
-                    "ai-chat-stream-done",
-                    serde_json::json!({ "phase": "complete" }),
-                )
-                .ok();
-            return Ok(());
-        }
-        Err(e) => {
-            if cancel_state.is_cancelled() {
-                return Err(AppError::Cancelled("Agent stopped by user".to_string()));
-            }
-            app_handle.emit("ai-chat-stream-thought", serde_json::json!({
+    app_handle
+        .emit("ai-agent-selected", selected_agent.as_ref())
+        .ok();
+    app_handle
+        .emit(
+            "ai-chat-stream-thought",
+            serde_json::json!({
                 "phase": "coordinating",
-                "text": format!("⚠️ Cảnh báo: Lỗi điều phối ({e}). Chuyển sang General Agent.\n")
-            })).ok();
-            AgentType::General
-        }
-    };
-    state.agent_type = agent_type;
+                "text": format!("=> Đã chọn Agent chuyên biệt: {}\n", selected_agent.description())
+            }),
+        )
+        .ok();
 
     // 3. Setup Instruction chuyên biệt cho Agent đã chọn
-    apply_agent_instructions(&mut state, agent_type);
+    apply_agent_instructions(&mut state, selected_agent);
 
     // 4. Luồng xử lý theo Agent
-    match agent_type {
+    match selected_agent {
         AgentType::Chat => {
             app_handle.emit("ai-agent-step", "chatting").ok();
             // Chat Agent giờ đây cũng có thể dùng Tool (Search, Read File)
@@ -139,9 +157,17 @@ fn apply_agent_instructions(state: &mut AgentState, agent_type: AgentType) {
         AgentType::General => AGENT_INSTRUCTIONS,
     };
 
-    let system_instructions = format!(
+    let mut system_instructions = format!(
         "{base_instruction}\n\n{NAMING_RULES}\n\n{WIKI_GRAPH_RULES}\n\nHÀNH ĐỘNG: Nếu cần thông tin cốt truyện, hãy đọc Wiki hoặc Chương cũ. Nếu cần thông tin thực tế, hãy dùng Google Search."
     );
+
+    // Append user-selected knowledge context if present
+    if !state.selected_files_content.is_empty() {
+        system_instructions.push_str(&format!(
+            "\n\n--- SELECTED KNOWLEDGE FILES ---\nYou MUST prioritize using the following information from the files selected by the user to answer the query:\n{}",
+            state.selected_files_content
+        ));
+    }
 
     state.system_instruction = Some(super::gemini_types::GeminiContent {
         role: "system".to_string(),

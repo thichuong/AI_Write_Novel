@@ -135,10 +135,30 @@
                 <h3><i data-lucide="message-square"></i> AI Assistant</h3>
                 <button id="clear-chat-btn"><i data-lucide="trash-2"></i></button>
             </div>
+            <div class="agent-selector-bar">
+                <label for="agent-type-select"><i data-lucide="cpu"></i> Chế độ:</label>
+                <sl-select id="agent-type-select" value="general" size="small">
+                    <sl-option value="chat">💬 Trò chuyện & Tìm kiếm</sl-option>
+                    <sl-option value="ideation">💡 Lên ý tưởng (Ideation)</sl-option>
+                    <sl-option value="writing">📝 Sáng tác truyện (Writing)</sl-option>
+                    <sl-option value="general">⚙️ Tổng hợp (General)</sl-option>
+                </sl-select>
+            </div>
             <div id="chat-messages">
                 <!-- Messages -->
             </div>
             <div class="chat-input-container">
+                <!-- Danh sách file kiến thức đã nạp -->
+                <div id="knowledge-files-container" class="knowledge-files-container hidden">
+                    <div class="knowledge-files-header">
+                        <span class="knowledge-title"><i data-lucide="book-open"></i> File kiến thức (<span id="knowledge-files-count">0</span>)</span>
+                        <button id="clear-knowledge-btn" title="Xóa tất cả kiến thức đã nạp"><i data-lucide="x"></i></button>
+                    </div>
+                    <div id="knowledge-files-list" class="knowledge-files-list">
+                        <!-- Các tag file sẽ render ở đây -->
+                    </div>
+                </div>
+
                 <div class="chat-input-wrapper">
                     <textarea id="chat-input" placeholder="Hỏi AI về cốt truyện, nhân vật..." rows="1"></textarea>
                     <button id="send-chat-btn" title="Gửi tin nhắn">
@@ -181,6 +201,8 @@
             <sl-divider></sl-divider>
             <sl-menu-item value="rename"><sl-icon slot="prefix" name="pencil"></sl-icon> Đổi tên</sl-menu-item>
             <sl-menu-item value="delete"><sl-icon slot="prefix" name="trash"></sl-icon> Xóa</sl-menu-item>
+            <sl-divider id="context-menu-divider-knowledge"></sl-divider>
+            <sl-menu-item value="add-knowledge" id="context-menu-add-knowledge"><sl-icon slot="prefix" name="book-half"></sl-icon> Nạp làm kiến thức Agent</sl-menu-item>
         </sl-menu>
     </div>
 

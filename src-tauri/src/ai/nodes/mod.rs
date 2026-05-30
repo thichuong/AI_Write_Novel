@@ -54,6 +54,8 @@ pub struct AgentState {
     pub last_saved_file: String,
     pub last_word_count: usize,
     pub last_wiki_updates_count: usize,
+    /// Content of the knowledge files selected by the user
+    pub selected_files_content: String,
 }
 
 /// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút

@@ -11,4 +11,5 @@ export const state = {
     selectedNodeType: null,
     selectedNodeName: null,
     isAgentRunning: false,
+    selectedKnowledgeFiles: [], // Array of { name, path }
 };

@@ -103,11 +103,7 @@ pub async fn stream_gemini_response(
     );
 
     let client = Client::new();
-    let response = client
-        .post(&url)
-        .json(request)
-        .send()
-        .await?;
+    let response = client.post(&url).json(request).send().await?;
 
     if !response.status().is_success() {
         let status = response.status().as_u16();
