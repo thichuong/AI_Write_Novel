@@ -155,6 +155,7 @@ export function setupAIListeners() {
 
     listen('ai-agent-selected', (event) => {
         const agent = event.payload;
+        state.currentAgentType = agent; // Sync agent type with frontend state
         const agentMap = {
             'chat': 'Chat Agent',
             'ideation': 'Ide Agent',
@@ -304,18 +305,39 @@ function getOrCreatePhaseContainer(phase) {
         
         const badge = document.createElement('div');
         badge.className = 'agent-step-badge';
-        const phaseMap = {
-            'coordinating': '🧠 Điều phối Agent',
-            'routing': '🧠 Điều phối Agent',
-            'chatting': '💬 Đang chuẩn bị',
-            'chat': '💬 Phản hồi trực tiếp',
-            'analyze': '🔍 Phân tích ngữ cảnh',
-            'execute': '⚙️ Đang thực thi',
-            'thinking': '✍️ Sáng tác chương mới',
-            'finalize': '⚙️ Đồng bộ Wiki & Memory',
-            'ideate': '💡 Đang lên ý tưởng',
-            'complete': '✨ Hoàn tất phản hồi'
-        };
+        
+        // Dynamically choose display labels based on current active agent type
+        const agentType = state.currentAgentType || 'chat';
+        let phaseMap = {};
+        
+        if (agentType === 'chat') {
+            phaseMap = {
+                'coordinating': '🧠 Điều phối Agent',
+                'chatting': '💬 Đang kết nối',
+                'complete': '💬 Trò chuyện & Tra cứu'
+            };
+        } else if (agentType === 'ideation' || agentType === 'ide') {
+            phaseMap = {
+                'coordinating': '🧠 Điều phối Agent',
+                'thinking': '💡 Suy nghĩ & Lên ý tưởng',
+                'complete': '💡 Brainstorm & Thiết lập Wiki'
+            };
+        } else if (agentType === 'writing' || agentType === 'writting') {
+            phaseMap = {
+                'coordinating': '🧠 Điều phối Agent',
+                'thinking': '✍️ Sáng tác chương mới',
+                'finalize': '⚙️ Đồng bộ Wiki & Memory',
+                'complete': '✨ Hoàn tất sáng tác'
+            };
+        } else {
+            phaseMap = {
+                'coordinating': '🧠 Điều phối Agent',
+                'thinking': '✍️ Sáng tác chương mới',
+                'finalize': '⚙️ Đồng bộ Wiki & Memory',
+                'complete': '✨ Hoàn tất phản hồi'
+            };
+        }
+        
         badge.innerText = phaseMap[phase] || phase;
         header.appendChild(badge);
 
@@ -375,7 +397,8 @@ export async function sendChat() {
     try {
         const knowledgeFiles = state.selectedKnowledgeFiles || [];
         const agentTypeSelect = document.getElementById('agent-type-select');
-        const selectedAgentType = agentTypeSelect ? agentTypeSelect.value : 'general';
+        const selectedAgentType = agentTypeSelect ? agentTypeSelect.value : 'chat';
+        state.currentAgentType = selectedAgentType; // Set active agent type before invoking chat
 
         await invoke('ai_chat', {
             rootPath: state.currentStoryPath,
