@@ -58,12 +58,6 @@ export async function openFile(input, shouldFocus = true) {
         // This ensures the editor refreshes if the AI updates the file currently being viewed
         if (state.activeFilePath === node.path) {
             loadEditorContent(tab);
-
-            // Disable editing for system files
-            const storyEditor = document.getElementById('story-editor');
-            if (storyEditor) {
-                storyEditor.contentEditable = node.name.startsWith('.') ? "false" : "true";
-            }
         }
     } catch (err) {
         console.error("Failed to open file:", err);
@@ -128,18 +122,83 @@ export function closeTab(filePath) {
 export function loadEditorContent(tab) {
     const currentFileName = document.getElementById('current-file-name');
     const storyEditor = document.getElementById('story-editor');
+    const markdownViewer = document.getElementById('markdown-viewer');
+    const toggleEditModeBtn = document.getElementById('toggle-edit-mode-btn');
     
     if (currentFileName) currentFileName.innerText = tab.name;
-    if (storyEditor) storyEditor.innerText = tab.content || "";
+    
+    const isMd = tab.name.toLowerCase().endsWith('.md');
+    
+    if (isMd) {
+        // Initialize view mode if not set
+        if (!state.viewModes[tab.path]) {
+            state.viewModes[tab.path] = 'view';
+        }
+        
+        const mode = state.viewModes[tab.path];
+        
+        if (toggleEditModeBtn) {
+            toggleEditModeBtn.classList.remove('hidden');
+            if (mode === 'view') {
+                toggleEditModeBtn.innerHTML = `<i data-lucide="edit-2"></i><span class="btn-text">Sửa</span>`;
+                toggleEditModeBtn.title = "Chuyển sang chế độ Chỉnh sửa";
+            } else {
+                toggleEditModeBtn.innerHTML = `<i data-lucide="eye"></i><span class="btn-text">Xem</span>`;
+                toggleEditModeBtn.title = "Chuyển sang chế độ Xem Markdown";
+            }
+        }
+        
+        if (mode === 'view') {
+            if (storyEditor) storyEditor.classList.add('hidden');
+            if (markdownViewer) {
+                markdownViewer.classList.remove('hidden');
+                if (window.marked && typeof window.marked.parse === 'function') {
+                    markdownViewer.innerHTML = window.marked.parse(tab.content || "");
+                } else if (window.marked) {
+                    markdownViewer.innerHTML = window.marked(tab.content || "");
+                } else {
+                    markdownViewer.innerText = tab.content || "";
+                }
+            }
+        } else {
+            if (markdownViewer) markdownViewer.classList.add('hidden');
+            if (storyEditor) {
+                storyEditor.classList.remove('hidden');
+                storyEditor.innerText = tab.content || "";
+                storyEditor.contentEditable = "true";
+            }
+        }
+    } else {
+        if (toggleEditModeBtn) toggleEditModeBtn.classList.add('hidden');
+        if (markdownViewer) markdownViewer.classList.add('hidden');
+        if (storyEditor) {
+            storyEditor.classList.remove('hidden');
+            storyEditor.innerText = tab.content || "";
+            // Disable editing for system files starting with dot
+            storyEditor.contentEditable = tab.name.startsWith('.') ? "false" : "true";
+        }
+    }
     
     const wordCount = document.getElementById('word-count');
     if (wordCount) wordCount.innerText = `Chars: ${tab.content ? tab.content.length : 0}`;
+    
+    if (window.lucide) window.lucide.createIcons();
 }
 
 export async function saveActiveFile(silent = false) {
     if (!state.activeFilePath || !state.currentStoryPath) return;
-    const storyEditor = document.getElementById('story-editor');
-    const content = storyEditor ? storyEditor.innerText : "";
+    
+    const isMd = state.activeFilePath.toLowerCase().endsWith('.md');
+    const currentMode = state.viewModes[state.activeFilePath] || 'view';
+    
+    let content;
+    if (isMd && currentMode === 'view') {
+        const tab = state.openTabs.find(t => t.path === state.activeFilePath);
+        content = tab ? tab.content : "";
+    } else {
+        const storyEditor = document.getElementById('story-editor');
+        content = storyEditor ? storyEditor.innerText : "";
+    }
 
     const tab = state.openTabs.find(t => t.path === state.activeFilePath);
     if (tab) tab.content = content;
@@ -172,6 +231,34 @@ export function setupEditorListeners() {
             openFile(filePath, false);
         }
     });
+
+    // Set up toggle edit mode button listener
+    const toggleBtn = document.getElementById('toggle-edit-mode-btn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            if (!state.activeFilePath) return;
+            const isMd = state.activeFilePath.toLowerCase().endsWith('.md');
+            if (!isMd) return;
+            
+            // Toggle view mode
+            const currentMode = state.viewModes[state.activeFilePath] || 'view';
+            const newMode = currentMode === 'view' ? 'edit' : 'view';
+            state.viewModes[state.activeFilePath] = newMode;
+            
+            // Reload content to update view
+            const tab = state.openTabs.find(t => t.path === state.activeFilePath);
+            if (tab) {
+                // If switching from Edit to View, make sure we capture current editor changes
+                if (newMode === 'view') {
+                    const storyEditor = document.getElementById('story-editor');
+                    if (storyEditor) {
+                        tab.content = storyEditor.innerText;
+                    }
+                }
+                loadEditorContent(tab);
+            }
+        });
+    }
 }
 
 // Attach globals for inline HTML event handlers

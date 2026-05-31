@@ -12,4 +12,5 @@ export const state = {
     selectedNodeName: null,
     isAgentRunning: false,
     selectedKnowledgeFiles: [], // Array of { name, path }
+    viewModes: {},              // Map of file path -> 'view' | 'edit'
 };

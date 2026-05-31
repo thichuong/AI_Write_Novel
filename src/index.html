@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/themes/dark.css" />
     <script type="module"
         src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/shoelace-autoloader.js"></script>
+    <!-- Marked Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body class="dark-pro sl-theme-dark">
@@ -118,11 +120,18 @@
                 <div id="editor-header">
                     <h2 id="current-file-name">Chào mừng</h2>
                     <div class="editor-actions">
+                        <button id="toggle-edit-mode-btn" class="editor-action-btn hidden" title="Chuyển chế độ Xem/Sửa">
+                            <i data-lucide="eye"></i>
+                            <span class="btn-text">Xem</span>
+                        </button>
                     </div>
                 </div>
                 <div id="story-editor-wrapper">
                     <div id="story-editor" contenteditable="true">
                         <!-- Content here -->
+                    </div>
+                    <div id="markdown-viewer" class="hidden">
+                        <!-- Rendered Markdown goes here -->
                     </div>
                 </div>
 
