@@ -12,10 +12,6 @@ use std::path::PathBuf;
 use strum_macros::{AsRefStr, Display};
 use tauri::{AppHandle, Emitter, State};
 
-pub mod analyze;
-pub mod complete;
-pub mod coordinate;
-pub mod execute;
 pub mod finalize;
 pub mod thinking;
 
@@ -39,7 +35,8 @@ impl AgentType {
     }
 }
 
-/// Trạng thái của Agent trong quá trình xử lý đa bước
+/// State of the Agent during multi-step processing
+#[allow(dead_code)]
 pub struct AgentState {
     pub app_handle: AppHandle,
     pub root_path: PathBuf,
@@ -49,7 +46,6 @@ pub struct AgentState {
     pub system_instruction: Option<GeminiContent>,
     pub contents: Vec<GeminiContent>,
     pub loop_count: u32,
-    // Các trường hỗ trợ tối ưu hóa luồng cho model nhỏ
     pub last_chapter_content: String,
     pub last_saved_file: String,
     pub last_word_count: usize,
@@ -58,7 +54,7 @@ pub struct AgentState {
     pub selected_files_content: String,
 }
 
-/// Helper: Chạy vòng lặp gọi AI và xử lý Tool chung cho tất cả các nút
+/// Helper: Runs the agent loop, calling AI and handling tool execution for all nodes
 pub async fn run_agent_loop(
     state: &mut AgentState,
     cancel_state: State<'_, CancellationState>,
@@ -82,7 +78,7 @@ pub async fn run_agent_loop(
         response_schema: None,
     };
 
-    // ToolConfig để cho phép dùng Built-in tools (Google Search) chung với Function calling
+    // ToolConfig to allow both built-in tools (Google Search) and function calling
     let tool_config = ToolConfig {
         function_calling_config: Some(FunctionCallingConfig {
             mode: "AUTO".to_string(),
@@ -90,7 +86,7 @@ pub async fn run_agent_loop(
         include_server_side_tool_invocations: Some(true),
     };
 
-    // Thông báo bắt đầu Phase để UI hiển thị box trống nếu chưa có gì
+    // Notify backend starting the phase to display an empty thought box in the UI
     if phase != "complete" {
         state
             .app_handle
@@ -125,7 +121,7 @@ pub async fn run_agent_loop(
             },
         };
 
-        // Stream kết quả về frontend
+        // Stream response to frontend
         let parts = stream_gemini_response(
             &state.app_handle,
             cancel_state.clone(),
@@ -148,7 +144,7 @@ pub async fn run_agent_loop(
             break;
         }
 
-        // Xử lý Tool Calls
+        // Execute Tool Calls
         let response_parts = execute_tool_calls(state, cancel_state.clone(), function_calls);
 
         state.contents.push(GeminiContent {
@@ -156,16 +152,16 @@ pub async fn run_agent_loop(
             parts: response_parts,
         });
 
-        // Thông báo cho UI là đã xử lý xong Tool
+        // Notify UI that tool execution is complete
         state.app_handle.emit("ai-chat-stream-tool-done", ()).ok();
 
-        // Tối ưu hóa Context (Context Pruning) nếu đang ở các bước sau
+        // Prune context history to save tokens
         if phase == "finalize" || phase == "complete" {
             prune_history(&mut state.contents);
         }
     }
 
-    // Thông báo toàn bộ phase đã hoàn thành
+    // Notify UI that the phase has completed
     state
         .app_handle
         .emit("ai-chat-stream-done", json!({ "phase": phase }))
@@ -274,10 +270,9 @@ fn execute_tool_calls(
     response_parts
 }
 
-/// Tối ưu hóa lịch sử: Loại bỏ các tin nhắn cũ hoặc các nội dung quá lớn
-/// để tiết kiệm token cho các bước cuối cùng.
+/// Prunes conversation history to save tokens
 pub fn prune_history(contents: &mut Vec<GeminiContent>) {
-    const TAKE_COUNT: usize = 12; // Giữ lại 12 tin nhắn gần nhất
+    const TAKE_COUNT: usize = 12; // Keep the 12 most recent messages
     const MAX_TEXT_LEN: usize = 3000;
     const MAX_TOOL_RES_LEN: usize = 1000;
 
@@ -291,7 +286,7 @@ pub fn prune_history(contents: &mut Vec<GeminiContent>) {
     for msg in contents.iter().skip(start_index) {
         let mut msg = msg.clone();
 
-        // Tối ưu hóa dung lượng từng tin nhắn
+        // Prune the size of individual message parts
         for part in &mut msg.parts {
             match part {
                 GeminiPart::Text { text } => {
@@ -317,7 +312,7 @@ pub fn prune_history(contents: &mut Vec<GeminiContent>) {
     *contents = new_contents;
 }
 
-/// Trích xuất khối JSON đầu tiên hợp lệ từ chuỗi văn bản (sử dụng brace counting)
+/// Extracts the first valid JSON block from a text string
 pub fn extract_json_block(text: &str) -> Option<String> {
     let mut balance = 0;
     let mut first_brace = None;

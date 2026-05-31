@@ -2,8 +2,7 @@
 use super::api_client::{get_api_key, get_model};
 use super::cancellation::CancellationState;
 use super::nodes::{
-    analyze::analyze_step, complete::complete_step, execute::execute_step, finalize::finalize_step,
-    run_agent_loop, thinking::thinking_step, AgentState, AgentType,
+    finalize::finalize_step, run_agent_loop, thinking::thinking_step, AgentState, AgentType,
 };
 use crate::error::{AppError, AppResult};
 use std::path::PathBuf;
@@ -56,12 +55,12 @@ pub async fn ai_chat(
 
     let selected_agent = match agent_type.to_lowercase().as_str() {
         "chat" => AgentType::Chat,
-        "ideation" => AgentType::Ideation,
-        "writing" => AgentType::Writing,
+        "ideation" | "ide" => AgentType::Ideation,
+        "writing" | "writting" => AgentType::Writing,
         _ => AgentType::General,
     };
 
-    // 1. Khởi tạo State với ngữ cảnh cơ bản
+    // 1. Initialize State with basic context
     let mut state = AgentState {
         app_handle: app_handle.clone(),
         root_path: PathBuf::from(root_path),
@@ -78,12 +77,12 @@ pub async fn ai_chat(
         selected_files_content: knowledge_context,
     };
 
-    // Chuẩn bị nội dung hội thoại (lịch sử + tin nhắn mới)
+    // Prepare conversation contents (history + new message)
     prepare_conversation_contents(&mut state, message, chat_history);
 
     cancel_state.reset();
 
-    // 2. Thông báo chọn Agent
+    // 2. Notify agent selection
     app_handle.emit("ai-agent-step", "coordinating").ok();
     app_handle
         .emit("ai-agent-selected", selected_agent.as_ref())
@@ -98,21 +97,40 @@ pub async fn ai_chat(
         )
         .ok();
 
-    // 3. Setup Instruction chuyên biệt cho Agent đã chọn
+    // 3. Setup system instructions with automated context injection
     apply_agent_instructions(&mut state, selected_agent);
 
-    // 4. Luồng xử lý theo Agent
+    // 4. Streamlined Agent Execution Flows
     match selected_agent {
         AgentType::Chat => {
             app_handle.emit("ai-agent-step", "chatting").ok();
-            // Chat Agent giờ đây cũng có thể dùng Tool (Search, Read File)
             run_agent_loop(&mut state, cancel_state.clone(), 3, "complete", true).await?;
         }
         AgentType::Ideation => {
-            run_standard_agent_flow(&mut state, cancel_state, false).await?;
+            // Ide Mode: Runs in 1 optimized step with tools enabled (allows updating Wiki and memory)
+            app_handle.emit("ai-agent-step", "thinking").ok();
+            run_agent_loop(&mut state, cancel_state.clone(), 5, "complete", true).await?;
         }
         AgentType::Writing | AgentType::General => {
-            run_standard_agent_flow(&mut state, cancel_state, true).await?;
+            // Writing Mode: Runs in 2 sequential steps (Writing -> Sync & Finalize)
+            // Step 1: Creative Writing
+            app_handle.emit("ai-agent-step", "thinking").ok();
+            thinking_step(&mut state, cancel_state.clone()).await?;
+
+            if cancel_state.is_cancelled() {
+                return Err(AppError::Cancelled("Stopped".to_string()));
+            }
+
+            // Step 2: Auto-Sync Wiki & Memory
+            app_handle.emit("ai-agent-step", "finalize").ok();
+            finalize_step(&mut state, cancel_state.clone()).await?;
+
+            if cancel_state.is_cancelled() {
+                return Err(AppError::Cancelled("Stopped".to_string()));
+            }
+
+            // Finish
+            app_handle.emit("ai-agent-step", "complete").ok();
         }
     }
 
@@ -124,7 +142,7 @@ fn prepare_conversation_contents(
     message: String,
     chat_history: Vec<serde_json::Value>,
 ) {
-    // Lấy lịch sử chat (6 tin nhắn gần nhất)
+    // Keep only the 6 most recent messages
     let historical_context: Vec<&serde_json::Value> = chat_history.iter().rev().take(6).collect();
     for msg in historical_context.into_iter().rev() {
         let role = msg["role"].as_str().unwrap_or("user");
@@ -138,7 +156,7 @@ fn prepare_conversation_contents(
         });
     }
 
-    // Đảm bảo message mới nhất có mặt
+    // Ensure the latest message is appended
     let last_msg_in_history = chat_history.last().and_then(|m| m["content"].as_str());
     if last_msg_in_history != Some(&message) {
         state.contents.push(super::gemini_types::GeminiContent {
@@ -160,7 +178,7 @@ fn apply_agent_instructions(state: &mut AgentState, agent_type: AgentType) {
         "{base_instruction}\n\n{NAMING_RULES}\n\n{WIKI_GRAPH_RULES}\n\nHÀNH ĐỘNG: Nếu cần thông tin cốt truyện, hãy đọc Wiki hoặc Chương cũ. Nếu cần thông tin thực tế, hãy dùng Google Search."
     );
 
-    // Load memory.md content if it exists to help the agent understand the project context
+    // Auto-inject project memory (memory.md) if exists
     let memory_path = state.root_path.join("memory.md");
     if memory_path.exists() && memory_path.is_file() {
         if let Ok(memory_content) = std::fs::read_to_string(&memory_path) {
@@ -171,6 +189,20 @@ fn apply_agent_instructions(state: &mut AgentState, agent_type: AgentType) {
                 system_instructions.push_str("\n--- END OF PROJECT MEMORY ---\n");
             }
         }
+    }
+
+    // Proactively auto-inject project directory structure (Chapter list)
+    if let Ok(dir_list) = super::tools::tool_list_directory(&state.root_path, ".") {
+        system_instructions.push_str("\n\n--- PROJECT DIRECTORY STRUCTURE ---\n");
+        system_instructions.push_str(&dir_list);
+        system_instructions.push_str("\n--- END OF DIRECTORY STRUCTURE ---\n");
+    }
+
+    // Proactively auto-inject the list of all available Wiki Entities
+    if let Ok(wiki_list) = super::tools::tool_wiki_list_entities(&state.root_path) {
+        system_instructions.push_str("\n\n");
+        system_instructions.push_str(&wiki_list);
+        system_instructions.push_str("\n--- END OF WIKI ---\n");
     }
 
     // Append user-selected knowledge context if present
@@ -187,58 +219,4 @@ fn apply_agent_instructions(state: &mut AgentState, agent_type: AgentType) {
             text: system_instructions,
         }],
     });
-}
-
-async fn run_standard_agent_flow(
-    state: &mut AgentState,
-    cancel_state: State<'_, CancellationState>,
-    with_pruning: bool,
-) -> AppResult<()> {
-    let app_handle = state.app_handle.clone();
-
-    // 1. Analyze
-    app_handle.emit("ai-agent-step", "analyze").ok();
-    analyze_step(state, cancel_state.clone()).await?;
-    if with_pruning {
-        super::nodes::prune_history(&mut state.contents);
-    }
-    if cancel_state.is_cancelled() {
-        return Err(AppError::Cancelled("Stopped".to_string()));
-    }
-
-    // 2. Thinking
-    app_handle.emit("ai-agent-step", "thinking").ok();
-    thinking_step(state, cancel_state.clone()).await?;
-    if with_pruning {
-        super::nodes::prune_history(&mut state.contents);
-    }
-    if cancel_state.is_cancelled() {
-        return Err(AppError::Cancelled("Stopped".to_string()));
-    }
-
-    // 3. Execute
-    app_handle.emit("ai-agent-step", "execute").ok();
-    execute_step(state, cancel_state.clone()).await?;
-    if with_pruning {
-        super::nodes::prune_history(&mut state.contents);
-    }
-    if cancel_state.is_cancelled() {
-        return Err(AppError::Cancelled("Stopped".to_string()));
-    }
-
-    // 4. Finalize
-    app_handle.emit("ai-agent-step", "finalize").ok();
-    finalize_step(state, cancel_state.clone()).await?;
-    if with_pruning {
-        super::nodes::prune_history(&mut state.contents);
-    }
-    if cancel_state.is_cancelled() {
-        return Err(AppError::Cancelled("Stopped".to_string()));
-    }
-
-    // 5. Complete
-    app_handle.emit("ai-agent-step", "complete").ok();
-    complete_step(state, cancel_state.clone()).await?;
-
-    Ok(())
 }

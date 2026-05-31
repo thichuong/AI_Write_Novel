@@ -157,9 +157,8 @@ export function setupAIListeners() {
         const agent = event.payload;
         const agentMap = {
             'chat': 'Chat Agent',
-            'ideation': 'Ideation Agent',
-            'writing': 'Writing Agent',
-            'general': 'General Agent'
+            'ideation': 'Ide Agent',
+            'writing': 'Writing Agent'
         };
         showStatus(`Đã điều phối tới: ${agentMap[agent] || agent}`);
     });
@@ -193,7 +192,7 @@ export function setupAIListeners() {
     // Khởi tạo và ghi nhớ Agent Type từ localStorage
     const agentTypeSelect = document.getElementById('agent-type-select');
     if (agentTypeSelect) {
-        const savedAgentType = localStorage.getItem('ai_agent_type') || 'general';
+        const savedAgentType = localStorage.getItem('ai_agent_type') || 'chat';
         agentTypeSelect.value = savedAgentType;
         
         agentTypeSelect.addEventListener('sl-change', () => {
