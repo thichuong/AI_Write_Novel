@@ -2,9 +2,8 @@
 use super::api_client::{get_api_key, get_model};
 use super::cancellation::CancellationState;
 use super::nodes::{
-    analyze::analyze_step, complete::complete_step,
-    execute::execute_step, finalize::finalize_step, run_agent_loop, thinking::thinking_step,
-    AgentState, AgentType,
+    analyze::analyze_step, complete::complete_step, execute::execute_step, finalize::finalize_step,
+    run_agent_loop, thinking::thinking_step, AgentState, AgentType,
 };
 use crate::error::{AppError, AppResult};
 use std::path::PathBuf;
@@ -160,6 +159,19 @@ fn apply_agent_instructions(state: &mut AgentState, agent_type: AgentType) {
     let mut system_instructions = format!(
         "{base_instruction}\n\n{NAMING_RULES}\n\n{WIKI_GRAPH_RULES}\n\nHÀNH ĐỘNG: Nếu cần thông tin cốt truyện, hãy đọc Wiki hoặc Chương cũ. Nếu cần thông tin thực tế, hãy dùng Google Search."
     );
+
+    // Load memory.md content if it exists to help the agent understand the project context
+    let memory_path = state.root_path.join("memory.md");
+    if memory_path.exists() && memory_path.is_file() {
+        if let Ok(memory_content) = std::fs::read_to_string(&memory_path) {
+            let trimmed = memory_content.trim();
+            if !trimmed.is_empty() {
+                system_instructions.push_str("\n\n--- PROJECT MEMORY (memory.md) ---\n");
+                system_instructions.push_str(trimmed);
+                system_instructions.push_str("\n--- END OF PROJECT MEMORY ---\n");
+            }
+        }
+    }
 
     // Append user-selected knowledge context if present
     if !state.selected_files_content.is_empty() {

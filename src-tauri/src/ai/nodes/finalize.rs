@@ -92,32 +92,87 @@ fn process_finalize_response(state: &AgentState, parts: &[GeminiPart]) -> AppRes
         })
         .collect();
 
+    let mut project_summary = String::new();
+    let mut extracted_successfully = false;
+
+    // Try to extract from JSON first
     if let Some(json_text) = crate::ai::nodes::extract_json_block(&full_text) {
         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_text) {
-            let project_summary = parsed["project_summary"].as_str().unwrap_or("");
-
-            // Cập nhật Memory (Ghi đè hoặc làm mới bản tóm tắt dự án)
-            if !project_summary.is_empty() {
-                // Tự động cập nhật file memory.md bằng code Rust
-                tools::tool_write_file(
-                    &state.app_handle,
-                    &state.root_path,
-                    "memory.md",
-                    project_summary,
-                )?;
-
-                state
-                    .app_handle
-                    .emit(
-                        "ai-chat-stream-thought",
-                        json!({
-                            "phase": "finalize",
-                            "text": format!("\n📝 [System]: Đã tự động cập nhật bản tóm tắt dự án mới nhất vào `memory.md` ({} words)\n", project_summary.split_whitespace().count())
-                        }),
-                    )
-                    .ok();
+            // Check potential keys: "project_summary", then "summary", "result", "content"
+            let keys = ["project_summary", "summary", "result", "content"];
+            for key in &keys {
+                if let Some(summary_val) = parsed.get(key) {
+                    if let Some(summary_str) = summary_val.as_str() {
+                        let trimmed = summary_str.trim();
+                        if !trimmed.is_empty() {
+                            project_summary = trimmed.to_string();
+                            extracted_successfully = true;
+                            break;
+                        }
+                    }
+                }
             }
         }
+    }
+
+    // Fallback: If JSON extraction failed or field was empty, clean and use the entire full_text
+    if !extracted_successfully {
+        let trimmed_text = full_text.trim();
+        if !trimmed_text.is_empty() {
+            // Clean up code block backticks and json markers if any
+            let mut cleaned = String::new();
+            let mut in_code_block = false;
+            for line in trimmed_text.lines() {
+                let trimmed_line = line.trim();
+                if trimmed_line.starts_with("```") {
+                    in_code_block = !in_code_block;
+                    continue;
+                }
+                if !in_code_block {
+                    cleaned.push_str(line);
+                    cleaned.push('\n');
+                }
+            }
+            let final_fallback = cleaned.trim().to_string();
+            if final_fallback.is_empty() {
+                // If stripping code block left nothing, use the original trimmed full_text
+                project_summary = trimmed_text.to_string();
+            } else {
+                project_summary = final_fallback;
+            }
+        }
+    }
+
+    // Ensure memory.md is written if we have any content
+    if !project_summary.is_empty() {
+        tools::tool_write_file(
+            &state.app_handle,
+            &state.root_path,
+            "memory.md",
+            &project_summary,
+        )?;
+
+        let word_count = project_summary.split_whitespace().count();
+        let message_text = if extracted_successfully {
+            format!(
+                "\n📝 [System]: Đã tự động cập nhật bản tóm tắt dự án mới nhất vào `memory.md` ({word_count} từ)\n"
+            )
+        } else {
+            format!(
+                "\n📝 [System]: Đã tự động cập nhật `memory.md` bằng phản hồi trực tiếp ({word_count} từ - Fallback)\n"
+            )
+        };
+
+        state
+            .app_handle
+            .emit(
+                "ai-chat-stream-thought",
+                json!({
+                    "phase": "finalize",
+                    "text": message_text
+                }),
+            )
+            .ok();
     }
 
     Ok(())
