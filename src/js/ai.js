@@ -311,10 +311,9 @@ function getOrCreatePhaseContainer(phase) {
             'chat': '💬 Phản hồi trực tiếp',
             'analyze': '🔍 Phân tích ngữ cảnh',
             'execute': '⚙️ Đang thực thi',
-            'summarize': '📝 Tổng hợp diễn biến',
-            'memory': '💾 Cập nhật Memory',
-            'finalize': '📝 Tổng hợp & Ghi nhớ',
-            'ideate': '💡 Đang sáng tạo',
+            'thinking': '✍️ Sáng tác chương mới',
+            'finalize': '⚙️ Đồng bộ Wiki & Memory',
+            'ideate': '💡 Đang lên ý tưởng',
             'complete': '✨ Hoàn tất phản hồi'
         };
         badge.innerText = phaseMap[phase] || phase;

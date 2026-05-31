@@ -31,10 +31,30 @@ pub async fn finalize_step(
         .ok();
 
     // Run the agent loop with tool calling enabled to perform wiki upserts and actions
-    run_agent_loop(state, cancel_state, 5, "finalize", true).await?;
+    run_agent_loop(state, cancel_state.clone(), 5, "finalize", true).await?;
 
     // Post-process the finalize response to safely extract and save memory.md summary
     process_finalize_feedback(state)?;
+
+    if cancel_state.is_cancelled() {
+        return Err(crate::error::AppError::Cancelled("Stopped".to_string()));
+    }
+
+    // Phase 3 (Final Report): Prompt AI to report completion friendly to the user
+    let complete_prompt = format!(
+        "HỆ THỐNG NHẮC NHỞ: Bạn đã hoàn thành việc sáng tác chương truyện mới, lưu thành công vào file '{}' (khoảng {} từ), và đã đồng bộ hóa đầy đủ thực thể mới vào Wiki. Hãy viết một báo cáo ngắn gọn, thân thiện bằng Tiếng Việt để thông báo cho tác giả và mời họ tiếp tục sáng tác.",
+        state.last_saved_file,
+        state.last_word_count
+    );
+    state.contents.push(GeminiContent {
+        role: "user".to_string(),
+        parts: vec![GeminiPart::Text {
+            text: complete_prompt,
+        }],
+    });
+
+    // Run agent loop with complete phase to stream output to UI's main answer area
+    run_agent_loop(state, cancel_state, 1, "complete", false).await?;
 
     Ok(())
 }
