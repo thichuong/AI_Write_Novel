@@ -1,6 +1,6 @@
 # AI_Write_Novel 🚀 - Trợ lý Sáng tác Truyện Thông minh
 
-Chào mừng bạn đến với **AI_Write_Novel**, một ứng dụng Desktop chuyên nghiệp hỗ trợ sáng tác truyện được phát triển bằng cấu trúc **Tauri (Rust + Vanilla JS)** và tích hợp các mô hình ngôn ngữ tiên tiến nhất (Gemini 1.5/2.0/3.5). Hệ thống được thiết kế để trở thành một "đồng tác giả" thực thụ, có khả năng điều phối các Agent chuyên biệt để quản lý cốt truyện, nhân vật và sáng tác.
+Chào mừng bạn đến với **AI_Write_Novel**, một ứng dụng Desktop chuyên nghiệp hỗ trợ sáng tác truyện được phát triển bằng cấu trúc **Tauri (Rust + Vanilla JS)** và tích hợp các mô hình ngôn ngữ tiên tiến nhất (Gemma 4). Hệ thống được thiết kế để trở thành một "đồng tác giả" thực thụ, có khả năng điều phối các Agent chuyên biệt để quản lý cốt truyện, nhân vật và sáng tác.
 
 ---
 
@@ -10,9 +10,15 @@ Chào mừng bạn đến với **AI_Write_Novel**, một ứng dụng Desktop c
   - **Chat (Trò chuyện & Tra cứu - 1 bước)**: Hỏi đáp, trò chuyện tự nhiên, tra cứu kiến thức thực tế hoặc đọc chương truyện cũ.
   - **Ide (Lên ý tưởng - 1 bước thông minh)**: Brainstorm ý tưởng, thiết lập thế giới, tự động tạo mới hoặc cập nhật các trang Wiki nhân vật/thế giới/lore/cốt truyện và `memory.md` trực tiếp thông qua gọi tool.
   - **Writing (Sáng tác & Đồng bộ - 2 bước)**: Sáng tác chương truyện mới chất lượng cao và tự động lưu file bằng Rust (Bước 1), sau đó tự động rà soát đồng bộ hóa Wiki và tóm tắt tiến trình vào `memory.md` (Bước 2).
-- **Cơ chế Tự động Nạp Bối cảnh (Auto-Context Injection)**: Backend Rust tự động gọi thu thập cấu trúc thư mục, danh sách thực thể Wiki hiện có và nội dung file `memory.md` để nạp trực tiếp vào System Instruction của AI. Không cần bước phân tích trung gian cồng kềnh, tăng tốc độ phản hồi lên **2.5x đến 5x**!
+- **Cơ chế Tự động Nạp Bối cảnh (Auto-Context Injection)**: Backend Rust tự động gọi thu thập cấu trúc thư mục, danh sách thực thể Wiki hiện có và nội dung file `memory.md` để nạp trực tiếp vào System Instruction của AI.
 - **Suy nghĩ thời gian thực (Real-time Reasoning)**: Hiển thị minh bạch quá trình tư duy qua các "Thought Blocks" khi AI đang brainstorm, sáng tác hoặc đồng bộ hóa Wiki.
-- **Tích hợp Google Search**: Kết hợp sức mạnh tìm kiếm thực tế trực tiếp từ Gemini khi giải đáp các thắc mắc của tác giả.
+- **Tích hợp Google Search**: Kết hợp sức mạng tìm kiếm thực tế trực tiếp từ Gemini khi giải đáp các thắc mắc của tác giả.
+- **Giao diện đa Theme & Nền tùy biến cao cấp (Premium Themes & Backgrounds)**:
+  - Hỗ trợ 3 chế độ màu tinh tế: **Dark Mode** mặc định sang trọng, **Light Mode** tối giản sáng sủa, và **Yellow Mode (Sepia)** vàng dịu nhẹ bảo vệ mắt cho những buổi sáng tác thâu đêm.
+  - Cho phép tải lên hình nền bất kỳ trực tiếp từ máy tính cá nhân.
+  - Thanh trượt điều chỉnh **Độ mờ (Opacity)** và **Độ nhòe (Blur)** của hình nền theo thời gian thực để đạt được độ tương phản chữ hoàn hảo.
+  - Tự động kích hoạt hiệu ứng kính mờ **Premium Glassmorphism** mượt mà cho toàn bộ giao diện khi có hình nền, đồng thời **bảo toàn 100% bố cục trang viết của Editor**, không bao giờ bị xê dịch hay xáo trộn.
+  - Cơ chế **Inline Anti-Flicker Script** nạp theme trực tiếp từ phần cứng ngay khi khởi động để tránh hoàn toàn hiện tượng nhấp nháy màn hình.
 - **Wiki Graph Knowledge Base**: Quản lý kiến thức nhân vật, bối cảnh thế giới, lore truyền thuyết và cốt truyện một cách logic trong thư mục `wiki/`.
 - **Long-term Memory & Context Optimization**: Tự động duy trì bộ nhớ dự án qua `memory.md` và tối ưu hóa Token qua cơ chế Pruning.
 

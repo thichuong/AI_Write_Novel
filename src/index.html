@@ -15,13 +15,41 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Shoelace UI -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/themes/dark.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/themes/light.css" />
     <script type="module"
         src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/shoelace-autoloader.js"></script>
     <!-- Marked Markdown Parser -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
-<body class="dark-pro sl-theme-dark">
+<body class="dark-pro">
+    <script>
+        // Apply saved theme and background instantly to avoid visual flickering
+        const savedTheme = localStorage.getItem('ui_theme') || 'dark';
+        document.body.classList.add('theme-' + savedTheme);
+        if (savedTheme === 'dark') {
+            document.body.classList.add('sl-theme-dark');
+            document.documentElement.classList.add('sl-theme-dark');
+        } else {
+            document.body.classList.add('sl-theme-light');
+            document.documentElement.classList.add('sl-theme-light');
+        }
+        
+        const savedBg = localStorage.getItem('ui_bg_image');
+        if (savedBg) {
+            document.body.classList.add('has-background');
+            const opacity = localStorage.getItem('ui_bg_opacity') || '50';
+            const blur = localStorage.getItem('ui_bg_blur') || '0';
+            document.documentElement.style.setProperty('--bg-opacity', opacity / 100);
+            document.documentElement.style.setProperty('--bg-blur', blur + 'px');
+            // Background image style will be set as soon as #app-background is parsed
+            document.addEventListener('DOMContentLoaded', () => {
+                const bgEl = document.getElementById('app-background');
+                if (bgEl) bgEl.style.backgroundImage = 'url("' + savedBg + '")';
+            });
+        }
+    </script>
+    <div id="app-background"></div>
     <div id="app">
         <!-- 1. Activity Bar -->
         <nav id="activity-bar">
@@ -92,6 +120,37 @@
                             <sl-option value="gemma-4-31b-it">gemma-4-31b-it</sl-option>
                             <sl-option value="gemma-4-26b-a4b-it">gemma-4-26b-a4b-it</sl-option>
                         </sl-select>
+                    </div>
+
+                    <div class="settings-group">
+                        <label>Giao Diện & Theme</label>
+                        <sl-select id="settings-theme" value="dark">
+                            <sl-option value="dark">🌙 Dark Mode</sl-option>
+                            <sl-option value="light">☀️ Light Mode</sl-option>
+                            <sl-option value="yellow">📜 Yellow Mode (Dịu mắt)</sl-option>
+                        </sl-select>
+                    </div>
+
+                    <div class="settings-group">
+                        <label>Hình Nền Cục Bộ</label>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="select-bg-btn" class="btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                <i data-lucide="image"></i> Chọn ảnh nền
+                            </button>
+                            <button id="clear-bg-btn" class="btn-secondary" style="padding: 6px 10px; color: #f87171;" title="Xóa hình nền">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-group" id="bg-opacity-group" style="display: none;">
+                        <label style="display: flex; justify-content: space-between;">Độ mờ nền: <span id="bg-opacity-val">50%</span></label>
+                        <sl-range id="settings-bg-opacity" min="0" max="100" value="50" step="5"></sl-range>
+                    </div>
+
+                    <div class="settings-group" id="bg-blur-group" style="display: none;">
+                        <label style="display: flex; justify-content: space-between;">Độ nhòe (Blur): <span id="bg-blur-val">0px</span></label>
+                        <sl-range id="settings-bg-blur" min="0" max="10" value="0" step="1"></sl-range>
                     </div>
 
                     <div class="settings-actions">

@@ -1,4 +1,10 @@
 :root {
+    --sidebar-width: 280px;
+    --activity-bar-width: 60px;
+    --chat-panel-width: min(600px, 40vw);
+}
+
+body, body.theme-dark {
     --bg-dark: #090a0b;
     --bg-sidebar: #0f1114;
     --bg-accent: #1e2126;
@@ -10,12 +16,95 @@
     --text-secondary: #94a3b8;
     --text-dim: #64748b;
     --border-color: #1e293b;
-    --glass-bg: rgba(15, 17, 20, 0.8);
+    --glass-bg: rgba(15, 17, 20, 0.7);
     --glass-border: rgba(255, 255, 255, 0.05);
+}
 
-    --sidebar-width: 280px;
-    --activity-bar-width: 60px;
-    --chat-panel-width: min(600px, 40vw);
+body.theme-light {
+    --bg-dark: #f8fafc;
+    --bg-sidebar: #ffffff;
+    --bg-accent: #f1f5f9;
+    --bg-tab: #e2e8f0;
+    --accent-color: #4f46e5;
+    --accent-hover: #3730a3;
+    --accent-glow: rgba(79, 70, 229, 0.15);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-dim: #94a3b8;
+    --border-color: #e2e8f0;
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(0, 0, 0, 0.05);
+}
+
+body.theme-yellow {
+    --bg-dark: #fdf6e3;
+    --bg-sidebar: #eee8d5;
+    --bg-accent: #ebdcb2;
+    --bg-tab: #ebdcb2;
+    --accent-color: #b58900;
+    --accent-hover: #cb4b16;
+    --accent-glow: rgba(181, 137, 0, 0.2);
+    --text-primary: #073642;
+    --text-secondary: #586e75;
+    --text-dim: #93a1a1;
+    --border-color: #ebdcb2;
+    --glass-bg: rgba(253, 246, 227, 0.8);
+    --glass-border: rgba(7, 54, 66, 0.08);
+}
+
+/* Background Image Layer */
+#app-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -2;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    opacity: 0;
+    filter: blur(0px);
+    transition: opacity 0.4s ease, filter 0.4s ease;
+}
+
+body.has-background #app-background {
+    opacity: var(--bg-opacity, 0.5);
+    filter: blur(var(--bg-blur, 0px));
+}
+
+/* Premium Glassmorphism for has-background state */
+body.has-background #activity-bar,
+body.has-background #sidebar,
+body.has-background #chat-panel,
+body.has-background #tab-bar,
+body.has-background #editor-container {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+body.has-background #editor-header {
+    background-color: transparent;
+}
+
+body.has-background #story-editor-wrapper {
+    background: transparent;
+}
+
+/* WebKit Rendering Fix for backdrop-filter paint bug on Linux/macOS */
+#sidebar, 
+#explorer-tree, 
+#chat-panel, 
+#activity-bar,
+sl-tree,
+sl-tree-item {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    will-change: transform;
 }
 
 * {
