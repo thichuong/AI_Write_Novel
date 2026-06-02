@@ -4,7 +4,7 @@
   "description": "AI Novelist IDE - Tauri Desktop App",
   "scripts": {
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
+    "tauri:dev": "WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
     "tauri:build": "tauri build"
   },
   "devDependencies": {
